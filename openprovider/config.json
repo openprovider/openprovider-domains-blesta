@@ -1,0 +1,32 @@
+{
+    "version": "0.0.1",
+    "name": "OpenProvider.config.name",
+    "description": "OpenProvider.config.description",
+    "authors": [
+        {
+            "name": "OpenProvider",
+            "url": "https://openprovider.com/"
+        },
+        {
+            "name": "Github repository",
+            "url": "https://github.com/openprovider/blesta-module"
+        }
+    ],
+    "package": {
+        "name_key": "domain"
+    },
+    "service": {
+        "name_key": "domain"
+    },
+    "module": {
+        "row": "OpenProvider.config.module.row",
+        "rows": "OpenProvider.config.module.rows",
+        "group": "OpenProvider.config.module.group",
+        "row_key": "OpenProvider.config.module.row_keys"
+    },
+    "email_tags": {
+        "module": [],
+        "package": [],
+        "service": []
+    }
+}
