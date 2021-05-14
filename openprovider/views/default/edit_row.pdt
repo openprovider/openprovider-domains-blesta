@@ -1,0 +1,42 @@
+<?php
+    $this->Widget->clear();
+    $this->Widget->create($this->_('OpenProvider.edit_row.box_title', true));
+?>
+<div class="inner">
+    <?php
+        $this->Form->create();
+    ?>
+    <div class="title_row first">
+        <h3><?php $this->_('OpenProvider.edit_row.basic_title'); ?></h3>
+    </div>
+    <div class="pad">
+        <ul>
+            <li>
+                <?php
+                    $this->Form->label($this->_('OpenProvider.row_meta.username', true), 'username');
+                    $this->Form->fieldText('username', $this->Html->ifSet($vars->username), ['id' => 'username']);
+                ?>
+            </li>
+            <li>
+                <?php
+                    $this->Form->label($this->_('OpenProvider.row_meta.password', true), 'password');
+                    $this->Form->fieldText('password', $this->Html->ifSet($vars->password), ['id' => 'password']);
+                ?>
+            </li>
+            <li>
+                <?php
+                    $this->Form->fieldCheckbox('test_mode', 'true', $this->Html->ifSet($vars->test_mode) == 'true', ['id' => 'test_mode']);
+                    $this->Form->label($this->_('OpenProvider.row_meta.test_mode', true), 'test_mode', ['class' => 'inline']);
+                ?>
+            </li>
+            <?php $this->Form->fieldHidden('openprovider_module', true); ?>
+        </ul>
+    </div>
+    <div class="button_row"><a class="btn btn-primary float-right submit" href="#"><?php $this->_('OpenProvider.edit_row.add_btn'); ?></a></div>
+    <?php
+        $this->Form->end();
+    ?>
+</div>
+<?php
+    $this->Widget->end();
+?>
