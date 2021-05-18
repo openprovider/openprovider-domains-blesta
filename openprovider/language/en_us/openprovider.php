@@ -38,6 +38,7 @@ $lang['OpenProvider.row_meta.test_mode']       = 'Test mode';
 $lang['OpenProvider.row_meta.test_mode_true']  = 'Yes';
 $lang['OpenProvider.row_meta.test_mode_false'] = 'No';
 
-// Errors
+// Errors add/update row
 $lang['OpenProvider.!error.username.empty'] = 'Username field shouldn\'t be empty!';
 $lang['OpenProvider.!error.password.empty'] = 'Password field shouldn\'t be empty!';
+$lang['OpenProvider.!error.password.valid_connection'] = 'Oops, something wrong: The username, password and test mode combination appear to be invalid, or your OpenProvider account may not be configured to allow API access.';

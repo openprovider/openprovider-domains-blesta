@@ -7,6 +7,8 @@ class Openprovider extends Module
      */
     private const moduleName = 'openprovider';
 
+    private const openproviderTokenTable = 'openprovider_token_table';
+
     /**
      * @var string default module path
      */
@@ -20,9 +22,22 @@ class Openprovider extends Module
         // Loading language
         Language::loadLang(self::moduleName, null, dirname(__FILE__) . DS . "language" . DS);
 
-        Loader::loadComponents($this, ['Input']);
+        Loader::load(__DIR__ . DS . 'vendor' . DS . 'autoload.php');
+        Loader::loadComponents($this, ['Input', 'Record']);
+
+        Loader::load(__DIR__ . DS . 'apis' . DS . 'openprovider_api.php');
 
         self::$defaultModuleViewPath = 'components' . DS . 'modules' . DS . self::moduleName . DS;
+    }
+
+    public function install()
+    {
+        $this->createOpenproviderTokenTable();
+    }
+
+    public function uninstall($module_id, $last_instance)
+    {
+        $this->deleteOpenproviderTokenTable();
     }
 
     /**
@@ -128,7 +143,7 @@ class Openprovider extends Module
             $vars['test_mode'] = 'false';
         }
 
-        $rules = $this->getRowRules();
+        $rules = $this->getRowRules($vars);
 
         $this->Input->setRules($rules);
 
@@ -149,7 +164,6 @@ class Openprovider extends Module
             return $meta;
         }
     }
-
 
     /**
      * This method attempts to update a module row given the input vars and the module row,
@@ -177,7 +191,7 @@ class Openprovider extends Module
             $vars['test_mode'] = 'false';
         }
 
-        $rules = $this->getRowRules();
+        $rules = $this->getRowRules($vars);
 
         $this->Input->setRules($rules);
 
@@ -204,7 +218,7 @@ class Openprovider extends Module
      *
      * @return array[][]
      */
-    private function getRowRules()
+    private function getRowRules(&$vars)
     {
         return [
             'username' => [
@@ -219,8 +233,129 @@ class Openprovider extends Module
                     'rule' => 'isEmpty',
                     'negate' => true,
                     'message' => Language::_('OpenProvider.!error.password.empty', true)
+                ],
+                'valid_connection' => [
+                    'last' => true,
+                    'rule' => [
+                        [$this, 'validateConnection'],
+                        $vars['username'],
+                        $vars['test_mode'] ?? 'false'
+                    ],
+                    'message' => Language::_('OpenProvider.!error.password.valid_connection', true)
                 ]
             ]
         ];
+    }
+
+    public function validateConnection($password, $username, $test_mode)
+    {
+        $api = $this->getApi();
+
+        $api->getConfig()->setHost($test_mode == 'true' ? OpenProviderApi::API_CTE_URL : OpenProviderApi::API_URL);
+        $token = $api->call('generateAuthTokenRequest', ['username' => $username, 'password' => $password])
+            ->getData()['token'] ?? '';
+        
+        $is_token_exists = strlen($token) > 0;
+
+        if ($is_token_exists) {
+            $this->setOpenproviderTokenToDatabase(
+                $this->generateUserHash($username, $password, $test_mode == 'true'),
+                $token,
+                date("Y-m-d H:i:s",strtotime(date("Y-m-d H:i:s")." +48 hours"))
+            );
+        }
+        
+        return $is_token_exists;
+    }
+
+    private function getApi($username = null, $password = null, $test_mode = true)
+    {
+        $api = new OpenProviderApi();
+
+        $api->getConfig()->setHost($test_mode ? OpenProviderApi::API_CTE_URL : OpenProviderApi::API_URL);
+
+        if (is_null($username) || is_null($password)) {
+            return $api;
+        }
+
+        $user_hash = $this->generateUserHash($username, $password, $test_mode);
+
+        $token = $this->getOpenproviderTokenFromDatabase($user_hash);
+
+        if (!$token) {
+            $token = $api->call('generateAuthTokenRequest', ['username' => $username, 'password' => $password])
+                ->getData()['token'] ?? '';
+        }
+
+        if (!$token) {
+            return $api;
+        }
+
+        $token_until_date = date("Y-m-d H:i:s",strtotime(date("Y-m-d H:i:s")." +48 hours"));
+        $this->setOpenproviderTokenToDatabase($user_hash, $token, $token_until_date);
+
+        $api->getConfig()->setToken($token);
+
+        return $api;
+    }
+
+    private function getOpenproviderTokenFromDatabase($user_hash)
+    {
+        $datetime_now_minus_half_hour = date("Y-m-d H:i:s",strtotime(date("Y-m-d H:i:s")." -30 minutes"));
+        $token = $this->Record
+            ->from(self::openproviderTokenTable)
+            ->select()
+            ->where('user_hash', '=', $user_hash)
+            ->fetch();
+
+        if (!$token) {
+            return '';
+        }
+
+        $token_until_date = strtotime($token->until_date);
+        if ($datetime_now_minus_half_hour < $token_until_date) {
+            return '';
+        }
+
+        return $token->token;
+    }
+
+    private function setOpenproviderTokenToDatabase($user_hash, $token, $until_date)
+    {
+        Loader::loadComponents($this, ['Record']);
+        try {
+            $this->Record
+                ->duplicate('token', '=', $token)
+                ->duplicate('until_date', '=', $until_date)
+                ->insert(self::openproviderTokenTable, ['user_hash' => $user_hash, 'token' => $token, 'until_date' => $until_date]);
+        } catch (\Exception $e) {}
+    }
+
+    private function createOpenproviderTokenTable()
+    {
+        Loader::loadComponents($this, ['Record']);
+        try {
+            $this->Record
+                ->setField('id', ['type' => 'int', 'size' => 10, 'unsigned' => true, 'auto_increment' => true])
+                ->setField('user_hash', ['type' => 'varchar', 'size' => 255])
+                ->setField('token', ['type' => 'varchar', 'size' => 255])
+                ->setField('until_date', ['type' => 'datetime', 'is_null' => true, 'default' => null])
+                ->setKey(['id'], 'primary')
+                ->setKey(['user_hash'], 'unique')
+                ->create(self::openproviderTokenTable);
+        } catch (\Exception $e) {}
+    }
+
+    private function deleteOpenproviderTokenTable()
+    {
+        Loader::loadComponents($this, ['Record']);
+        try {
+            $this->Record->drop(self::openproviderTokenTable);
+        } catch (\Exception $e) {}
+    }
+
+    private function generateUserHash($username, $password, $test_mode)
+    {
+        return md5(substr($username, 0, 2) . substr($password, 0, 2) . $test_mode ? 'on' : 'off');
     }
 }

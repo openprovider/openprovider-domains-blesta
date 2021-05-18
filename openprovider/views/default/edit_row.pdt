@@ -20,7 +20,7 @@
             <li>
                 <?php
                     $this->Form->label($this->_('OpenProvider.row_meta.password', true), 'password');
-                    $this->Form->fieldText('password', $this->Html->ifSet($vars->password), ['id' => 'password']);
+                    $this->Form->fieldText('password', $this->Html->ifSet($vars->password), ['id' => 'password', 'type' => 'password']);
                 ?>
             </li>
             <li>
