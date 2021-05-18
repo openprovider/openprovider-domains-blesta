@@ -6,18 +6,23 @@ class Openprovider extends Module
      * @const string
      */
     private const moduleName = 'openprovider';
-
-    private const openproviderTokenTable = 'openprovider_token_table';
+    /**
+     * @const string
+     */
+    private const openproviderTokenTable = 'openprovider_token';
 
     /**
      * @var string default module path
      */
     private static string $defaultModuleViewPath;
 
+    /**
+     * Openprovider constructor.
+     */
     public function __construct()
     {
         // Loading module config
-        $this->loadConfig(dirname(__FILE__) . DS . 'config.json');
+        $this->loadConfig(__DIR__ . DS . 'config.json');
 
         // Loading language
         Language::loadLang(self::moduleName, null, dirname(__FILE__) . DS . "language" . DS);
@@ -30,11 +35,23 @@ class Openprovider extends Module
         self::$defaultModuleViewPath = 'components' . DS . 'modules' . DS . self::moduleName . DS;
     }
 
+    /**
+     * The methods are invoked when the module is installed, upgraded, or uninstalled respectively.
+     *
+     * @return array|void
+     * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-install/upgrade/uninstall()
+     */
     public function install()
     {
         $this->createOpenproviderTokenTable();
     }
 
+    /**
+     * The methods are invoked when the module is installed, upgraded, or uninstalled respectively.
+     *
+     * @return array|void
+     * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-install/upgrade/uninstall()
+     */
     public function uninstall($module_id, $last_instance)
     {
         $this->deleteOpenproviderTokenTable();
@@ -247,6 +264,14 @@ class Openprovider extends Module
         ];
     }
 
+    /**
+     * return true if credentials are correct in OpenProvider
+     *
+     * @param string $password
+     * @param string $username
+     * @param string $test_mode true/false
+     * @return bool
+     */
     public function validateConnection($password, $username, $test_mode)
     {
         $api = $this->getApi();
@@ -268,6 +293,18 @@ class Openprovider extends Module
         return $is_token_exists;
     }
 
+    /**
+     * return OpenProvider api client.
+     * if username and password are exists, this method configure api, set token and host.
+     * if username or password are null, it returns clear api client that require to configure it.
+     * if username and password provided but incorrect, it returns clear api client without exceptions.
+     * Also this method save token to database, if it not exists or exists but expired.
+     *
+     * @param string|null $username
+     * @param string|null $password
+     * @param bool $test_mode
+     * @return OpenProviderApi
+     */
     private function getApi($username = null, $password = null, $test_mode = true)
     {
         $api = new OpenProviderApi();
@@ -299,6 +336,12 @@ class Openprovider extends Module
         return $api;
     }
 
+    /**
+     * Get token from openprovider_token table
+     *
+     * @param string $user_hash
+     * @return string
+     */
     private function getOpenproviderTokenFromDatabase($user_hash)
     {
         $datetime_now_minus_half_hour = date("Y-m-d H:i:s",strtotime(date("Y-m-d H:i:s")." -30 minutes"));
@@ -320,6 +363,13 @@ class Openprovider extends Module
         return $token->token;
     }
 
+    /**
+     * Method to set token in openprovider_token table
+     *
+     * @param string $user_hash
+     * @param string $token
+     * @param string $until_date
+     */
     private function setOpenproviderTokenToDatabase($user_hash, $token, $until_date)
     {
         Loader::loadComponents($this, ['Record']);
@@ -331,6 +381,9 @@ class Openprovider extends Module
         } catch (\Exception $e) {}
     }
 
+    /**
+     * Method to create openprovider_token table
+     */
     private function createOpenproviderTokenTable()
     {
         Loader::loadComponents($this, ['Record']);
@@ -346,6 +399,9 @@ class Openprovider extends Module
         } catch (\Exception $e) {}
     }
 
+    /**
+     * Method to drop openprovider_token table
+     */
     private function deleteOpenproviderTokenTable()
     {
         Loader::loadComponents($this, ['Record']);
@@ -354,6 +410,14 @@ class Openprovider extends Module
         } catch (\Exception $e) {}
     }
 
+    /**
+     * Generating user hash by a rule
+     *
+     * @param string $username
+     * @param string $password
+     * @param bool $test_mode
+     * @return string
+     */
     private function generateUserHash($username, $password, $test_mode)
     {
         return md5(substr($username, 0, 2) . substr($password, 0, 2) . $test_mode ? 'on' : 'off');
