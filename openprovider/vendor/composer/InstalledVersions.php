@@ -32,7 +32,7 @@ private static $installed = array (
     'aliases' => 
     array (
     ),
-    'reference' => '5a107fc968b7fe27cd87d8afc9db2af82ddd7007',
+    'reference' => '005f229490a9344555108b31e944e943cb4513a2',
     'name' => 'openprovider/openprovider-domains-blesta',
   ),
   'versions' => 
@@ -89,7 +89,7 @@ private static $installed = array (
       'aliases' => 
       array (
       ),
-      'reference' => '5a107fc968b7fe27cd87d8afc9db2af82ddd7007',
+      'reference' => '005f229490a9344555108b31e944e943cb4513a2',
     ),
     'openprovider/rest-client-php' => 
     array (
@@ -98,7 +98,7 @@ private static $installed = array (
       'aliases' => 
       array (
       ),
-      'reference' => '5f5391452ebcd71936d7357f12da995f2906e750',
+      'reference' => '250fa1ca3e98a6a7ea26331eef31273d488041bb',
     ),
     'phpdocumentor/reflection-common' => 
     array (
@@ -258,12 +258,12 @@ private static $installed = array (
     ),
     'symfony/serializer' => 
     array (
-      'pretty_version' => 'v5.2.7',
-      'version' => '5.2.7.0',
+      'pretty_version' => 'v5.2.9',
+      'version' => '5.2.9.0',
       'aliases' => 
       array (
       ),
-      'reference' => '3698d2611c4917d3689ff89c0a0dcaa761c8e771',
+      'reference' => 'b072c8faa82c641da6cc32c33f8caa7c7c4567a2',
     ),
     'symfony/string' => 
     array (
@@ -464,9 +464,23 @@ return $installed[0]['root'];
 
 
 
+
 public static function getRawData()
 {
+@trigger_error('getRawData only returns the first dataset loaded, which may not be what you expect. Use getAllRawData() instead which returns all datasets for all autoloaders present in the process.', E_USER_DEPRECATED);
+
 return self::$installed;
+}
+
+
+
+
+
+
+
+public static function getAllRawData()
+{
+return self::getInstalled();
 }
 
 
