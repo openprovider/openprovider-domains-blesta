@@ -7,6 +7,7 @@ require_once __DIR__ . DS . 'params_creator.php';
 
 use Openprovider\Api\Rest\Client\Base\Configuration;
 use GuzzleHttp\Client as HttpClient;
+use Symfony\Component\Serializer\NameConverter\CamelCaseToSnakeCaseNameConverter;
 use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
 use Symfony\Component\Serializer\Serializer;
 
@@ -48,14 +49,16 @@ class OpenProviderApi
      * @var Response
      */
     private $last_response;
-
+    /**
+     * OpenProviderApi constructor.
+     */
     public function __construct()
     {
         $this->configuration = new Configuration();
         $this->command_mapping = new CommandMapping();
         $this->api_config = new ApiConfig();
         $this->params_creator = new ParamsCreator();
-        $this->serializer = new Serializer([new ObjectNormalizer()]);
+        $this->serializer = new Serializer([new ObjectNormalizer(null, new CamelCaseToSnakeCaseNameConverter())]);
         $this->last_request = ['cmd' => '', 'args' => []];
         $this->http_client = new HttpClient([
             'headers' => [
@@ -152,13 +155,16 @@ class OpenProviderApi
     }
 
     /**
-     * @return string|null
+     * @return array
      */
     public function getLastRequest()
     {
         return $this->last_request;
     }
 
+    /**
+     * @return Response
+     */
     public function getLastResponse()
     {
         return $this->last_response;

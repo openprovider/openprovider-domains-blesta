@@ -32,7 +32,7 @@ private static $installed = array (
     'aliases' => 
     array (
     ),
-    'reference' => '005f229490a9344555108b31e944e943cb4513a2',
+    'reference' => '6c56dab98245e913d62535edb5096e59b4fb6faa',
     'name' => 'openprovider/openprovider-domains-blesta',
   ),
   'versions' => 
@@ -46,6 +46,15 @@ private static $installed = array (
       ),
       'reference' => 'f0529f892e4cb0db5e9e949031965f212c7da269',
     ),
+    'brick/phonenumber' => 
+    array (
+      'pretty_version' => '0.2.2',
+      'version' => '0.2.2.0',
+      'aliases' => 
+      array (
+      ),
+      'reference' => '8bce37b0a4e569bae773fc2a254892acd0eb05d1',
+    ),
     'composer/installers' => 
     array (
       'pretty_version' => 'v1.11.0',
@@ -54,6 +63,24 @@ private static $installed = array (
       array (
       ),
       'reference' => 'ae03311f45dfe194412081526be2e003960df74b',
+    ),
+    'giggsey/libphonenumber-for-php' => 
+    array (
+      'pretty_version' => '8.12.23',
+      'version' => '8.12.23.0',
+      'aliases' => 
+      array (
+      ),
+      'reference' => 'a6ff019e6d6f25f39c0797e678b342547045fb20',
+    ),
+    'giggsey/locale' => 
+    array (
+      'pretty_version' => '1.9',
+      'version' => '1.9.0.0',
+      'aliases' => 
+      array (
+      ),
+      'reference' => 'b07f1eace8072ccc61445ad8fbd493ff9d783043',
     ),
     'guzzlehttp/guzzle' => 
     array (
@@ -89,7 +116,7 @@ private static $installed = array (
       'aliases' => 
       array (
       ),
-      'reference' => '005f229490a9344555108b31e944e943cb4513a2',
+      'reference' => '6c56dab98245e913d62535edb5096e59b4fb6faa',
     ),
     'openprovider/rest-client-php' => 
     array (
