@@ -56,6 +56,8 @@ $lang['OpenProvider.nameserver.ns5'] = 'Name Server 5';
 $lang['OpenProvider.domain.domain'] = 'Domain Name';
 
 // Errors add/update row
-$lang['OpenProvider.!error.username.empty'] = 'Username field shouldn\'t be empty!';
-$lang['OpenProvider.!error.password.empty'] = 'Password field shouldn\'t be empty!';
+$lang['OpenProvider.!error.username.empty']            = 'Username field shouldn\'t be empty!';
+$lang['OpenProvider.!error.password.empty']            = 'Password field shouldn\'t be empty!';
 $lang['OpenProvider.!error.password.valid_connection'] = 'Oops, something wrong: The username, password and test mode combination appear to be invalid, or your OpenProvider account may not be configured to allow API access.';
+$lang['OpenProvider.!error.client.not_exist']          = 'Client not exist!';
+$lang['OpenProvider.!error.client.phone_not_exist']    = 'Client`s phone number not exists!';

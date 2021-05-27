@@ -1,15 +1,13 @@
 <?php
 
+use Brick\PhoneNumber\PhoneNumber;
+
 class Openprovider extends Module
 {
     /**
      * @const string
      */
     private const moduleName = 'openprovider';
-    /**
-     * @const string
-     */
-    private const openproviderTokenTable = 'openprovider_token';
 
     /**
      * @var string default module path
@@ -24,7 +22,7 @@ class Openprovider extends Module
 //        Configure::errorReporting(-1);
         // Loading module config
         $this->loadConfig(__DIR__ . DS . 'config.json');
-
+        
         // Loading language
         Language::loadLang(self::moduleName, null, dirname(__FILE__) . DS . "language" . DS);
 
@@ -32,6 +30,7 @@ class Openprovider extends Module
         Loader::loadComponents($this, ['Input', 'Record']);
         Loader::loadModels($this, ['ModuleManager']);
         Loader::load(__DIR__ . DS . 'apis' . DS . 'openprovider_api.php');
+        Loader::load(__DIR__ . DS . 'helpers' . DS . 'database_helper.php');
 
         Configure::load('openprovider', __DIR__ . DS . 'config' . DS);
 
@@ -56,7 +55,9 @@ class Openprovider extends Module
      */
     public function install()
     {
-        $this->createOpenproviderTokenTable();
+        $database_helper = new DatabaseHelper($this->Record);
+        $database_helper->createOpenproviderTokenTable();
+        $database_helper->createOpenproviderHandlesTable();
     }
 
     /**
@@ -67,7 +68,9 @@ class Openprovider extends Module
      */
     public function uninstall($module_id, $last_instance)
     {
-        $this->deleteOpenproviderTokenTable();
+        $database_helper = new DatabaseHelper($this->Record);
+        $database_helper->deleteOpenproviderTokenTable();
+        $database_helper->deleteOpenproviderHandlesTable();
     }
 
     /**
@@ -341,26 +344,6 @@ class Openprovider extends Module
             $fields->setField($type);
         }
 
-//        $fields->setHtml("
-//            <script type=\"text/javascript\">
-//                $(document).ready(function() {
-//                    toggleTldOptions($('#openprovider_type').val());
-//
-//                    // Re-fetch module options
-//                    $('#openprovider_type').change(function() {
-//                        toggleTldOptions($(this).val());
-//                    });
-//
-//                    function toggleTldOptions(type) {
-//                        if (type == 'ssl')
-//                            $('.openprovider_tlds').hide();
-//                        else
-//                            $('.openprovider_tlds').show();
-//                    }
-//                });
-//            </script>
-//        ");
-
         return $fields;
     }
 
@@ -387,15 +370,32 @@ class Openprovider extends Module
      */
     public function addService($package, array $vars = null, $parent_package = null, $parent_service = null, $status = 'pending')
     {
-
         // Get the module row used for this service
         $row = $this->getModuleRow();
-        $api = $this->getApi($row->meta->username, $row->meta->password, $row->meta->test_mode == 'true');
-        if (isset($vars['domain'])) {
-            $splited_domain_name = $this->splitDomainName($vars['domain']);
-            $tld = '.' . $splited_domain_name['extension'];
+
+        $is_service_domain = $package->meta->type == 'domain';
+        $use_module = isset($vars['use_module']) && $vars['use_module'] == 'true';
+
+        if ($is_service_domain) {
+            if (isset($vars['domain'])) {
+                $splitted_domain_name = $this->splitDomainName($vars['domain']);
+            } else {
+                // getting domain name if not exist in $vars
+                Loader::loadModels($this, ['Services']);
+                $domain = $this->Services->get($vars['service_id']);
+
+                foreach ($domain->fields as $field) {
+                    if ($field->key == 'domain') {
+                        $splitted_domain_name = $this->splitDomainName($field->value);
+                        $vars['domain'] = $field->value;
+                        break;
+                    }
+                }
+            }
+            $tld = '.' . $splitted_domain_name['extension'];
         }
 
+        // taking configuration fields
         $input_fields = array_merge(
             Configure::get('OpenProvider.domain_fields'),
             (array) Configure::get('OpenProvider.domain_fields' . $tld),
@@ -403,7 +403,10 @@ class Openprovider extends Module
             ['years' => true, 'transfer' => $vars['transfer'] ?? 1]
         );
 
-        if (isset($vars['use_module']) && $vars['use_module'] == 'true') {
+        // if method use module
+        if ($use_module) {
+            $api = $this->getApi($row->meta->username, $row->meta->password, $row->meta->test_mode == 'true');
+            $database_helper = new DatabaseHelper($this->Record);
 
             if ($package->meta->type == 'domain') {
                 $vars['years'] = 1;
@@ -416,6 +419,13 @@ class Openprovider extends Module
                 }
             }
 
+            // generating name_servers array: ['name' => name_server]
+            $name_servers = array_map(function ($name_server_name) {
+                return [
+                    'name' => $name_server_name
+                ];
+            }, array_filter($package->meta->ns, function ($name_server_name) {return !empty($name_server_name);}));
+
             // Set all whois info from client ($vars['client_id'])
             if (!isset($this->Clients)) {
                 Loader::loadModels($this, ['Clients']);
@@ -423,31 +433,48 @@ class Openprovider extends Module
             if (!isset($this->Contacts)) {
                 Loader::loadModels($this, ['Contacts']);
             }
+
             Loader::load(__DIR__ . DS . 'helpers' . DS . 'address_splitter.php');
+            Loader::load(__DIR__ . DS . 'helpers' . DS . 'phone_analyzer.php');
 
             $client = $this->Clients->get($vars['client_id']);
 
-            if ($client) {
-                $contact_numbers = $this->Contacts->getNumbers($client->contact_id);
-                try {
-                    $contact_full_address = $client->address1 . ' ' . $client->address2;
-                    $contact_splitted_address = AddressSplitter::splitAddress($contact_full_address);
-                    $contact_house_number = $contact_splitted_address['houseNumberParts']['base'];
-                    $contact_street       = $contact_splitted_address['streetName'] . ' ' . $contact_splitted_address['additionToAddress2'];
-                } catch (Exception $e) {
-                    if (strpos($e->getMessage(), ' could not be splitted into street name and house number.') !== false)
-                        $contact_street = $contact_full_address;
-                }
+            // We cant create domain and contacts without client information
+            if (!$client) {
+                throw new Exception(Language::_('OpenProvider.!error.client.not_exist', true));
             }
-            var_dump($contact_numbers);die;
 
+            // taking phone number
+            $contact_numbers = $this->Contacts->getNumbers($client->contact_id);
+            $contact_number = $contact_numbers[0]->number ?? null;
+            if (is_null($contact_number)) {
+                throw new Exception('OpenProvider.!error.client.phone_not_exist');
+            }
+            // making it correct format
+            $contact_number = PhoneAnalyzer::makePhoneCorrectFormat($contact_number, $client->country);
+            if ($contact_number) {
+                $phone = PhoneAnalyzer::makePhoneArray($contact_number);
+            }
+
+            // processing address
+            try {
+                $contact_full_address = $client->address1 . ' ' . $client->address2;
+                $contact_splitted_address = AddressSplitter::splitAddress($contact_full_address);
+                $contact_house_number = $contact_splitted_address['houseNumberParts']['base'];
+                $contact_street       = $contact_splitted_address['streetName'] . ' ' . $contact_splitted_address['additionToAddress2'];
+            } catch (Exception $e) {
+                if (strpos($e->getMessage(), ' could not be splitted into street name and house number.') !== false)
+                    $contact_street = $contact_full_address;
+            }
+
+            // putting contact data together
             $customer = [
                 'name' => [
-                    'firstName' => $client->first_name,
-                    'lastName'  => $client->last_name,
+                    'first_name' => $client->first_name,
+                    'last_name'  => $client->last_name,
                     'initials'   => mb_substr($client->first_name, 0, 1) . '.' . mb_substr($client->last_name, 0, 1)
                 ],
-                'companyName' => $client->company,
+                'company_name' => $client->company,
                 'email' => $client->email,
                 'address' => [
                     'city' => $client->city,
@@ -456,9 +483,46 @@ class Openprovider extends Module
                     'state' => $client->state,
                     'street' => $contact_street,
                     'number' => $contact_house_number,
-                ]
+                ],
+                'phone' => $phone
             ];
 
+            // Creating contacts and saving handles to database
+            $handles = [];
+            $handles['owner_handle'] = $api->call('createCustomerRequest', $customer)->getData()['handle'];
+            $this->logRequest($api);
+            $handles['admin_handle'] = $api->call('createCustomerRequest', $customer)->getData()['handle'];
+            $this->logRequest($api);
+            $handles['tech_handle'] = $api->call('createCustomerRequest', $customer)->getData()['handle'];
+            $this->logRequest($api);
+            $handles['billing_handle'] = $api->call('createCustomerRequest', $customer)->getData()['handle'];
+            $this->logRequest($api);
+
+            $database_helper->setServiceHandles($vars['service_id'], $handles);
+
+            // putting domain data together
+            $domain = [
+                'admin_handle'   => $handles['admin_handle'],
+                'billing_handle' => $handles['billing_handle'],
+                'owner_handle'   => $handles['owner_handle'],
+                'tech_handle'    => $handles['tech_handle'],
+                'autorenew'      => 'off',
+                'domain'         => $splitted_domain_name,
+                'period'         => $vars['years'],
+                'name_servers'   => $name_servers,
+            ];
+
+            // creating domain
+            $domain_response = $api->call('createDomainRequest', $domain);
+            $this->logRequest($api);
+
+            // if creation domain failed we need to delete customers for it
+            if ($domain_response->getCode() != 0 || !isset($domain_response->getData()['id'])) {
+                foreach ($handles as $handle) {
+                    $api->call('deleteCustomerRequest', ['handle' => $handle]);
+                    $this->logRequest($api);
+                }
+            }
         }
 
         $meta = [];
@@ -471,15 +535,11 @@ class Openprovider extends Module
             ];
         }
 
-        // Filter the given $vars into an array of key/value pairs that will be passed to the API
-//        $params = $this->getFieldsFromInput((array)$vars, $package);
-//        var_dump($params);die;
         return $meta;
     }
 
     public function editService($package, $service, array $vars = [], $parent_package = null, $parent_service = null)
     {
-        var_dump('lalal');die;
         return parent::editService($package, $service, $vars, $parent_package, $parent_service); // TODO: Change the autogenerated stub
     }
 
@@ -534,6 +594,7 @@ class Openprovider extends Module
     public function validateConnection($password, $username, $test_mode = null)
     {
         $api = $this->getApi();
+        $database_helper = new DatabaseHelper($this->Record);
 
         $api->getConfig()->setHost($test_mode == 'true' ? OpenProviderApi::API_CTE_URL : OpenProviderApi::API_URL);
 
@@ -545,7 +606,7 @@ class Openprovider extends Module
         $is_token_exists = strlen($token) > 0;
 
         if ($is_token_exists) {
-            $this->setOpenproviderTokenToDatabase(
+            $database_helper->setOpenproviderTokenToDatabase(
                 $this->generateUserHash($username, $password, $test_mode == 'true'),
                 $token,
                 date("Y-m-d H:i:s", strtotime(date("Y-m-d H:i:s") . " +48 hours"))
@@ -617,6 +678,7 @@ class Openprovider extends Module
     private function getApi($username = null, $password = null, $test_mode = true)
     {
         $api = new OpenProviderApi();
+        $database_helper = new DatabaseHelper($this->Record);
 
         $api->getConfig()->setHost($test_mode ? OpenProviderApi::API_CTE_URL : OpenProviderApi::API_URL);
 
@@ -626,7 +688,7 @@ class Openprovider extends Module
 
         $user_hash = $this->generateUserHash($username, $password, $test_mode);
 
-        $token = $this->getOpenproviderTokenFromDatabase($user_hash);
+        $token = $database_helper->getOpenproviderTokenFromDatabase($user_hash);
         if ($token) {
             $api->getConfig()->setToken($token);
             return $api;
@@ -642,89 +704,11 @@ class Openprovider extends Module
 
         $token_until_date = date("Y-m-d H:i:s", strtotime(date("Y-m-d H:i:s") . " +48 hours"));
 
-        $this->setOpenproviderTokenToDatabase($user_hash, $token, $token_until_date);
+        $database_helper->setOpenproviderTokenToDatabase($user_hash, $token, $token_until_date);
 
         $api->getConfig()->setToken($token);
 
         return $api;
-    }
-
-    /**
-     * Get token from openprovider_token table
-     *
-     * @param string $user_hash
-     * @return string
-     */
-    private function getOpenproviderTokenFromDatabase($user_hash)
-    {
-        $datetime_now_minus_half_hour = date("Y-m-d H:i:s", strtotime(date("Y-m-d H:i:s") . " -30 minutes"));
-        $token                        = $this->Record
-            ->from(self::openproviderTokenTable)
-            ->select()
-            ->where('user_hash', '=', $user_hash)
-            ->fetch();
-
-        if (!$token) {
-            return '';
-        }
-
-        $token_until_date = strtotime($token->until_date);
-        if (strtotime($datetime_now_minus_half_hour) > $token_until_date) {
-            return '';
-        }
-
-        return $token->token;
-    }
-
-    /**
-     * Method to set token in openprovider_token table
-     *
-     * @param string $user_hash
-     * @param string $token
-     * @param string $until_date
-     */
-    private function setOpenproviderTokenToDatabase($user_hash, $token, $until_date)
-    {
-        Loader::loadComponents($this, ['Record']);
-        try {
-            $this->Record
-                ->duplicate('token', '=', $token)
-                ->duplicate('until_date', '=', $until_date)
-                ->insert(self::openproviderTokenTable, ['user_hash' => $user_hash, 'token' => $token, 'until_date' => $until_date]);
-
-        } catch (\Exception $e) {
-        }
-    }
-
-    /**
-     * Method to create openprovider_token table
-     */
-    private function createOpenproviderTokenTable()
-    {
-        Loader::loadComponents($this, ['Record']);
-        try {
-            $this->Record
-                ->setField('id', ['type' => 'int', 'size' => 10, 'unsigned' => true, 'auto_increment' => true])
-                ->setField('user_hash', ['type' => 'varchar', 'size' => 255])
-                ->setField('token', ['type' => 'varchar', 'size' => 255])
-                ->setField('until_date', ['type' => 'datetime', 'is_null' => true, 'default' => null])
-                ->setKey(['id'], 'primary')
-                ->setKey(['user_hash'], 'unique')
-                ->create(self::openproviderTokenTable);
-        } catch (\Exception $e) {
-        }
-    }
-
-    /**
-     * Method to drop openprovider_token table
-     */
-    private function deleteOpenproviderTokenTable()
-    {
-        Loader::loadComponents($this, ['Record']);
-        try {
-            $this->Record->drop(self::openproviderTokenTable);
-        } catch (\Exception $e) {
-        }
     }
 
     /**
@@ -748,8 +732,8 @@ class Openprovider extends Module
     {
         $last_request = $api->getLastRequest();
         $last_response = $api->getLastResponse();
-        $this->log($last_request['cmd'], serialize($last_request['args']), 'input', true);
-        $this->log($last_request['cmd'], serialize($last_response->getData()), 'output', $last_response->getCode() == 0);
+        $this->log($last_request['cmd'], json_encode($last_request['args']), 'input', true);
+        $this->log($last_request['cmd'], json_encode($last_response->getData()), 'output', $last_response->getCode() == 0);
     }
 
     private function getTlds()
@@ -774,7 +758,7 @@ class Openprovider extends Module
             $row->meta->test_mode == 'true'
         );
 
-        $response = $api->call('searchExtensionRequest', ['extensions' => $this->getSupportedTlds(), 'with_price' => true])->getData();
+        $response = $api->call('searchExtensionRequest', ['extensions' => $this->getSupportedTlds()])->getData();
         $this->logRequest($api);
     }
 
