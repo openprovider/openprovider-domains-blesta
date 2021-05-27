@@ -36,8 +36,18 @@ class OpenProviderApi
      * @var ParamsCreator
      */
     private $params_creator;
-
+    /**
+     * @var Serializer
+     */
     private $serializer;
+    /**
+     * @var array ['cmd' => string, 'args' => array]
+     */
+    private $last_request;
+    /**
+     * @var Response
+     */
+    private $last_response;
 
     public function __construct()
     {
@@ -46,7 +56,7 @@ class OpenProviderApi
         $this->api_config = new ApiConfig();
         $this->params_creator = new ParamsCreator();
         $this->serializer = new Serializer([new ObjectNormalizer()]);
-
+        $this->last_request = ['cmd' => '', 'args' => []];
         $this->http_client = new HttpClient([
             'headers' => [
                 'X-Client' => self::API_CLIENT_NAME
@@ -73,6 +83,11 @@ class OpenProviderApi
             $service->getConfig()->setAccessToken($this->api_config->getToken());
         }
 
+        $this->last_request = [
+            'cmd' => $cmd,
+            'args' => $args
+        ];
+
         try {
             $requestParameters = $this->params_creator->createParameters($args, $service, $apiMethod);
             $reply = $service->$apiMethod(...$requestParameters);
@@ -81,16 +96,22 @@ class OpenProviderApi
                     json_decode(substr($e->getMessage(), strpos($e->getMessage(), 'response:') + strlen('response:')))
                 ) ?? $e->getMessage();
 
-            return $this->failedResponse(
+            $return = $this->failedResponse(
                 $response,
                 $responseData['desc'] ?? $e->getMessage(),
                 $responseData['code'] ?? $e->getCode()
             );
+            $this->last_response = $return;
+
+            return $return;
         }
 
         $data = $this->serializer->normalize($reply->getData());
 
-        return $this->successResponse($response, $data);
+        $return = $this->successResponse($response, $data);
+        $this->last_response = $return;
+
+        return $return;
     }
 
     public function getConfig()
@@ -128,5 +149,18 @@ class OpenProviderApi
         $response->setCode($code);
 
         return $response;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getLastRequest()
+    {
+        return $this->last_request;
+    }
+
+    public function getLastResponse()
+    {
+        return $this->last_response;
     }
 }

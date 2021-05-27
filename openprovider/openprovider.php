@@ -21,6 +21,7 @@ class Openprovider extends Module
      */
     public function __construct()
     {
+//        Configure::errorReporting(-1);
         // Loading module config
         $this->loadConfig(__DIR__ . DS . 'config.json');
 
@@ -29,10 +30,22 @@ class Openprovider extends Module
 
         Loader::load(__DIR__ . DS . 'vendor' . DS . 'autoload.php');
         Loader::loadComponents($this, ['Input', 'Record']);
-
+        Loader::loadModels($this, ['ModuleManager']);
         Loader::load(__DIR__ . DS . 'apis' . DS . 'openprovider_api.php');
 
+        Configure::load('openprovider', __DIR__ . DS . 'config' . DS);
+
         self::$defaultModuleViewPath = 'components' . DS . 'modules' . DS . self::moduleName . DS;
+
+        if (is_null($this->getModule())) {
+            $modules = $this->ModuleManager->getInstalled();
+            foreach ($modules as $module) {
+                if (strtolower($module->name) == self::moduleName) {
+                    $this->setModule($module);
+                    break;
+                }
+            }
+        }
     }
 
     /**
@@ -76,7 +89,17 @@ class Openprovider extends Module
 
         // Load the helpers required for this view
         Loader::loadHelpers($this, ['Form', 'Html', 'Widget']);
+
+        // Rendering additional buttons if reseller exists
+        $link_buttons = [];
+        foreach ($module->rows as $row) {
+            if (isset($row->meta->username) && isset($row->meta->password)) {
+                # here additional buttons
+            }
+        }
+
         $this->view->set('module', $module);
+        $this->view->set('link_buttons', $link_buttons);
 
         return $this->view->fetch();
     }
@@ -152,7 +175,7 @@ class Openprovider extends Module
      */
     public function addModuleRow(array &$vars)
     {
-        $allowed_fields = ['username', 'password', 'test_mode', 'openprovider_module'];
+        $allowed_fields   = ['username', 'password', 'test_mode', 'openprovider_module'];
         $encrypted_fields = ['password'];
 
         // Set unspecified checkboxes
@@ -171,8 +194,8 @@ class Openprovider extends Module
             foreach ($vars as $key => $value) {
                 if (in_array($key, $allowed_fields)) {
                     $meta[] = [
-                        'key' => $key,
-                        'value' => $value,
+                        'key'       => $key,
+                        'value'     => $value,
                         'encrypted' => in_array($key, $encrypted_fields) ? 1 : 0
                     ];
                 }
@@ -197,16 +220,16 @@ class Openprovider extends Module
      */
     public function editModuleRow($module_row, array &$vars)
     {
-        $allowed_fields = ['username', 'password', 'test_mode', 'openprovider_module'];
+        $allowed_fields   = ['username', 'password', 'test_mode', 'openprovider_module'];
         $encrypted_fields = ['password'];
-
-        // Merge package settings on to the module row meta
-        $module_row = array_merge($vars, (array)$module_row->meta);
 
         // Set unspecified checkboxes
         if (empty($vars['test_mode'])) {
             $vars['test_mode'] = 'false';
         }
+
+        // Merge package settings on to the module row meta
+        $module_row = array_merge((array)$module_row->meta, $vars);
 
         $rules = $this->getRowRules($vars);
 
@@ -219,8 +242,8 @@ class Openprovider extends Module
             foreach ($module_row as $key => $value) {
                 if (in_array($key, $allowed_fields)) {
                     $meta[] = [
-                        'key' => $key,
-                        'value' => $value,
+                        'key'       => $key,
+                        'value'     => $value,
                         'encrypted' => in_array($key, $encrypted_fields) ? 1 : 0
                     ];
                 }
@@ -228,6 +251,308 @@ class Openprovider extends Module
 
             return $meta;
         }
+    }
+
+    /**
+     * This method returns a ModuleFields object containing all fields used when adding or editing a package,
+     * including any javascript that can be executed when the page is rendered with those fields.
+     * Any post data submitted will be passed in $vars.
+     *
+     * @param null $vars
+     * @return ModuleFields
+     * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-getPackageFields($vars=null)
+     */
+    public function getPackageFields($vars = null)
+    {
+        Loader::loadHelpers($this, ['Html']);
+
+        $fields = new ModuleFields();
+
+        // Fetch all packages available for the given server or server group
+        $module_row = null;
+        if (isset($vars->module_group) && $vars->module_group == '') {
+            if (isset($vars->module_row) && $vars->module_row > 0) {
+                $module_row = $this->getModuleRow($vars->module_row);
+            } else {
+                $rows = $this->getModuleRows();
+                if (isset($rows[0])) {
+                    $module_row = $rows[0];
+                }
+                unset($rows);
+            }
+        } else {
+            // Fetch the 1st server from the list of servers in the selected group
+            $rows = $this->getModuleRows($vars->module_group);
+            if (isset($rows[0])) {
+                $module_row = $rows[0];
+            }
+            unset($rows);
+        }
+
+        $types = [
+            'domain' => Language::_('OpenProvider.package_fields.type_domain', true),
+        ];
+
+        // Set type of package
+        $type = $fields->label(
+            Language::_('OpenProvider.package_fields.type', true),
+            'openprovider_type'
+        );
+        $type->attach(
+            $fields->fieldSelect(
+                'meta[type]',
+                $types,
+                $this->Html->ifSet($vars->meta['type']),
+                ['id' => 'openprovider_type']
+            )
+        );
+        $fields->setField($type);
+
+        // Set all TLD checkboxes
+        $tld_options = $fields->label(Language::_('OpenProvider.package_fields.tld_options', true));
+
+        $tlds = $this->getSupportedTlds();
+        sort($tlds);
+
+        foreach ($tlds as $tld) {
+            $tld_label = $fields->label($tld, 'tld_' . $tld);
+            $tld_options->attach(
+                $fields->fieldCheckbox(
+                    'meta[tlds][]',
+                    $tld,
+                    (isset($vars->meta['tlds']) && in_array($tld, $vars->meta['tlds'])),
+                    ['id' => 'tld_' . $tld],
+                    $tld_label
+                )
+            );
+        }
+        $fields->setField($tld_options);
+
+        // Set nameservers
+        for ($i = 1; $i <= 5; $i++) {
+            $type = $fields->label(Language::_('OpenProvider.nameserver.ns' . $i, true), 'openprovider_ns' . $i);
+            $type->attach(
+                $fields->fieldText(
+                    'meta[ns][]',
+                    $this->Html->ifSet($vars->meta['ns'][$i - 1]),
+                    ['id' => 'openprovider_ns' . $i]
+                )
+            );
+            $fields->setField($type);
+        }
+
+//        $fields->setHtml("
+//            <script type=\"text/javascript\">
+//                $(document).ready(function() {
+//                    toggleTldOptions($('#openprovider_type').val());
+//
+//                    // Re-fetch module options
+//                    $('#openprovider_type').change(function() {
+//                        toggleTldOptions($(this).val());
+//                    });
+//
+//                    function toggleTldOptions(type) {
+//                        if (type == 'ssl')
+//                            $('.openprovider_tlds').hide();
+//                        else
+//                            $('.openprovider_tlds').show();
+//                    }
+//                });
+//            </script>
+//        ");
+
+        return $fields;
+    }
+
+    /**
+     * This method attempts to add a service given the package and input vars,
+     * as well as the intended status. If this service is an addon service,
+     * the parent package will be given. The parent service will also be given
+     * if the parent service has already been provisioned.
+     * This method returns an array containing an array of key=>value fields for each service field and its value,
+     * as well as whether the value should be encrypted.
+     *
+     * @param stdClass $package
+     * @param array|null $vars
+     * @param null $parent_package
+     * @param null $parent_service
+     * @param string $status The status of the service being added. These include:
+     *
+     *  - active
+     *  - canceled
+     *  - pending
+     *  - suspended
+     * @return array|void
+     * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-addService($package,array$vars=null,$parent_package=null,$parent_service=null,$status=%22pending%22)
+     */
+    public function addService($package, array $vars = null, $parent_package = null, $parent_service = null, $status = 'pending')
+    {
+
+        // Get the module row used for this service
+        $row = $this->getModuleRow();
+        $api = $this->getApi($row->meta->username, $row->meta->password, $row->meta->test_mode == 'true');
+        if (isset($vars['domain'])) {
+            $splited_domain_name = $this->splitDomainName($vars['domain']);
+            $tld = '.' . $splited_domain_name['extension'];
+        }
+
+        $input_fields = array_merge(
+            Configure::get('OpenProvider.domain_fields'),
+            (array) Configure::get('OpenProvider.domain_fields' . $tld),
+            (array) Configure::get('OpenProvider.nameserver_fields'),
+            ['years' => true, 'transfer' => $vars['transfer'] ?? 1]
+        );
+
+        if (isset($vars['use_module']) && $vars['use_module'] == 'true') {
+
+            if ($package->meta->type == 'domain') {
+                $vars['years'] = 1;
+
+                foreach ($package->pricing as $pricing) {
+                    if ($pricing->id == $vars['pricing_id']) {
+                        $vars['years'] = $pricing->term;
+                        break;
+                    }
+                }
+            }
+
+            // Set all whois info from client ($vars['client_id'])
+            if (!isset($this->Clients)) {
+                Loader::loadModels($this, ['Clients']);
+            }
+            if (!isset($this->Contacts)) {
+                Loader::loadModels($this, ['Contacts']);
+            }
+            Loader::load(__DIR__ . DS . 'helpers' . DS . 'address_splitter.php');
+
+            $client = $this->Clients->get($vars['client_id']);
+
+            if ($client) {
+                $contact_numbers = $this->Contacts->getNumbers($client->contact_id);
+                try {
+                    $contact_full_address = $client->address1 . ' ' . $client->address2;
+                    $contact_splitted_address = AddressSplitter::splitAddress($contact_full_address);
+                    $contact_house_number = $contact_splitted_address['houseNumberParts']['base'];
+                    $contact_street       = $contact_splitted_address['streetName'] . ' ' . $contact_splitted_address['additionToAddress2'];
+                } catch (Exception $e) {
+                    if (strpos($e->getMessage(), ' could not be splitted into street name and house number.') !== false)
+                        $contact_street = $contact_full_address;
+                }
+            }
+            var_dump($contact_numbers);die;
+
+            $customer = [
+                'name' => [
+                    'firstName' => $client->first_name,
+                    'lastName'  => $client->last_name,
+                    'initials'   => mb_substr($client->first_name, 0, 1) . '.' . mb_substr($client->last_name, 0, 1)
+                ],
+                'companyName' => $client->company,
+                'email' => $client->email,
+                'address' => [
+                    'city' => $client->city,
+                    'country' => $client->country,
+                    'zipcode' => $client->zip,
+                    'state' => $client->state,
+                    'street' => $contact_street,
+                    'number' => $contact_house_number,
+                ]
+            ];
+
+        }
+
+        $meta = [];
+        $fields = array_intersect_key($vars, $input_fields);
+        foreach ($fields as $key => $value) {
+            $meta[] = [
+                'key' => $key,
+                'value' => $value,
+                'encrypted' => 0
+            ];
+        }
+
+        // Filter the given $vars into an array of key/value pairs that will be passed to the API
+//        $params = $this->getFieldsFromInput((array)$vars, $package);
+//        var_dump($params);die;
+        return $meta;
+    }
+
+    public function editService($package, $service, array $vars = [], $parent_package = null, $parent_service = null)
+    {
+        var_dump('lalal');die;
+        return parent::editService($package, $service, $vars, $parent_package, $parent_service); // TODO: Change the autogenerated stub
+    }
+
+    /**
+     * The getTlds() method returns a list of the TLDs supported by the registrar module.
+     *
+     * @param int|null $module_row_id
+     * @return string[]
+     * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-getTlds($module_row_id=null)
+     */
+    public function getSupportedTlds($module_row_id = null)
+    {
+        return [
+            '.com',
+            '.es'
+        ];
+    }
+
+    /**
+     * The checkAvailability() method is called when an availability check is made for a domain from an order form.
+     * It must return true if the domain is available or false otherwise.
+     *
+     * @param string $domain
+     * @param null $module_row_id
+     * @return bool
+     * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-checkAvailability($domain,$module_row_id=null)
+     */
+    public function checkAvailability($domain, $module_row_id = null)
+    {
+        $row = $this->getModuleRow($module_row_id);
+        $api = $this->getApi($row->meta->username, $row->meta->password, $row->meta->test_mode == 'true');
+        $args = [
+            $this->splitDomainName($domain)
+        ];
+
+        $response = $api->call('checkDomainRequest', ['domains' => $args])->getData();
+
+        $this->logRequest($api);
+
+        return $response['results'][0]['status'] == 'free';
+    }
+
+    /**
+     * return true if credentials are correct in OpenProvider
+     *
+     * @param string $password
+     * @param string $username
+     * @param string $test_mode 'true'/'false'
+     * @return bool
+     * @throws Exception
+     */
+    public function validateConnection($password, $username, $test_mode = null)
+    {
+        $api = $this->getApi();
+
+        $api->getConfig()->setHost($test_mode == 'true' ? OpenProviderApi::API_CTE_URL : OpenProviderApi::API_URL);
+
+        $token = $api->call('generateAuthTokenRequest', ['username' => $username, 'password' => $password])
+                ->getData()['token'] ?? '';
+
+        $this->logRequest($api);
+
+        $is_token_exists = strlen($token) > 0;
+
+        if ($is_token_exists) {
+            $this->setOpenproviderTokenToDatabase(
+                $this->generateUserHash($username, $password, $test_mode == 'true'),
+                $token,
+                date("Y-m-d H:i:s", strtotime(date("Y-m-d H:i:s") . " +48 hours"))
+            );
+        }
+
+        return $is_token_exists;
     }
 
     /**
@@ -239,16 +564,16 @@ class Openprovider extends Module
     {
         return [
             'username' => [
-                'empty' => [
-                    'rule' => 'isEmpty',
-                    'negate' => true,
+                'valid' => [
+                    'rule'    => 'isEmpty',
+                    'negate'  => true,
                     'message' => Language::_('OpenProvider.!error.username.empty', true)
                 ]
             ],
             'password' => [
-                'empty' => [
-                    'rule' => 'isEmpty',
-                    'negate' => true,
+                'valid'            => [
+                    'rule'    => 'isEmpty',
+                    'negate'  => true,
                     'message' => Language::_('OpenProvider.!error.password.empty', true)
                 ],
                 'valid_connection' => [
@@ -265,32 +590,16 @@ class Openprovider extends Module
     }
 
     /**
-     * return true if credentials are correct in OpenProvider
-     *
-     * @param string $password
-     * @param string $username
-     * @param string $test_mode true/false
-     * @return bool
+     * @param $domain_name
+     * @return array ['name', 'extension']
      */
-    public function validateConnection($password, $username, $test_mode)
+    private function splitDomainName($domain_name)
     {
-        $api = $this->getApi();
-
-        $api->getConfig()->setHost($test_mode == 'true' ? OpenProviderApi::API_CTE_URL : OpenProviderApi::API_URL);
-        $token = $api->call('generateAuthTokenRequest', ['username' => $username, 'password' => $password])
-            ->getData()['token'] ?? '';
-        
-        $is_token_exists = strlen($token) > 0;
-
-        if ($is_token_exists) {
-            $this->setOpenproviderTokenToDatabase(
-                $this->generateUserHash($username, $password, $test_mode == 'true'),
-                $token,
-                date("Y-m-d H:i:s",strtotime(date("Y-m-d H:i:s")." +48 hours"))
-            );
-        }
-        
-        return $is_token_exists;
+        $domain_name_array = explode('.', $domain_name);
+        return [
+            'name'      => $domain_name_array[0],
+            'extension' => implode('.', array_slice($domain_name_array, 1)),
+        ];
     }
 
     /**
@@ -318,17 +627,21 @@ class Openprovider extends Module
         $user_hash = $this->generateUserHash($username, $password, $test_mode);
 
         $token = $this->getOpenproviderTokenFromDatabase($user_hash);
-
-        if (!$token) {
-            $token = $api->call('generateAuthTokenRequest', ['username' => $username, 'password' => $password])
-                ->getData()['token'] ?? '';
+        if ($token) {
+            $api->getConfig()->setToken($token);
+            return $api;
         }
+
+        $token = $api->call('generateAuthTokenRequest', ['username' => $username, 'password' => $password])
+                ->getData()['token'] ?? '';
+        $this->logRequest($api);
 
         if (!$token) {
             return $api;
         }
 
-        $token_until_date = date("Y-m-d H:i:s",strtotime(date("Y-m-d H:i:s")." +48 hours"));
+        $token_until_date = date("Y-m-d H:i:s", strtotime(date("Y-m-d H:i:s") . " +48 hours"));
+
         $this->setOpenproviderTokenToDatabase($user_hash, $token, $token_until_date);
 
         $api->getConfig()->setToken($token);
@@ -344,8 +657,8 @@ class Openprovider extends Module
      */
     private function getOpenproviderTokenFromDatabase($user_hash)
     {
-        $datetime_now_minus_half_hour = date("Y-m-d H:i:s",strtotime(date("Y-m-d H:i:s")." -30 minutes"));
-        $token = $this->Record
+        $datetime_now_minus_half_hour = date("Y-m-d H:i:s", strtotime(date("Y-m-d H:i:s") . " -30 minutes"));
+        $token                        = $this->Record
             ->from(self::openproviderTokenTable)
             ->select()
             ->where('user_hash', '=', $user_hash)
@@ -356,7 +669,7 @@ class Openprovider extends Module
         }
 
         $token_until_date = strtotime($token->until_date);
-        if ($datetime_now_minus_half_hour < $token_until_date) {
+        if (strtotime($datetime_now_minus_half_hour) > $token_until_date) {
             return '';
         }
 
@@ -378,7 +691,9 @@ class Openprovider extends Module
                 ->duplicate('token', '=', $token)
                 ->duplicate('until_date', '=', $until_date)
                 ->insert(self::openproviderTokenTable, ['user_hash' => $user_hash, 'token' => $token, 'until_date' => $until_date]);
-        } catch (\Exception $e) {}
+
+        } catch (\Exception $e) {
+        }
     }
 
     /**
@@ -396,7 +711,8 @@ class Openprovider extends Module
                 ->setKey(['id'], 'primary')
                 ->setKey(['user_hash'], 'unique')
                 ->create(self::openproviderTokenTable);
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+        }
     }
 
     /**
@@ -407,7 +723,8 @@ class Openprovider extends Module
         Loader::loadComponents($this, ['Record']);
         try {
             $this->Record->drop(self::openproviderTokenTable);
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+        }
     }
 
     /**
@@ -421,5 +738,80 @@ class Openprovider extends Module
     private function generateUserHash($username, $password, $test_mode)
     {
         return md5(substr($username, 0, 2) . substr($password, 0, 2) . $test_mode ? 'on' : 'off');
+    }
+
+    /**
+     * @param OpenProviderApi $api
+     * @throws Exception
+     */
+    private function logRequest(OpenProviderApi $api)
+    {
+        $last_request = $api->getLastRequest();
+        $last_response = $api->getLastResponse();
+        $this->log($last_request['cmd'], serialize($last_request['args']), 'input', true);
+        $this->log($last_request['cmd'], serialize($last_response->getData()), 'output', $last_response->getCode() == 0);
+    }
+
+    private function getTlds()
+    {
+        // Fetch the TLDs results from the cache, if they exist
+        $cache = Cache::fetchCache(
+            'tlds_prices',
+            Configure::get('Blesta.company_id') . DS . 'modules' . DS . 'openprovider' . DS
+        );
+
+        if ($cache) {
+            return unserialize(base64_decode($cache));
+        }
+
+        Loader::loadModels($this, ['Currencies']);
+
+        $row = $this->getRow();
+
+        $api = $this->getApi(
+            $row->meta->username,
+            $row->meta->password,
+            $row->meta->test_mode == 'true'
+        );
+
+        $response = $api->call('searchExtensionRequest', ['extensions' => $this->getSupportedTlds(), 'with_price' => true])->getData();
+        $this->logRequest($api);
+    }
+
+    /**
+     * return the OpenProvider first row
+     *
+     * @return mixed|null
+     */
+    private function getRow()
+    {
+        $module_rows = $this->getRows();
+
+        return isset($module_rows[0]) ? $module_rows[0] : null;
+    }
+
+    /**
+     * return all the OpenProvider module rows
+     *
+     * @return array
+     */
+    private function getRows()
+    {
+        Loader::loadModels($this, ['ModuleManager']);
+
+        $module_rows = [];
+        $modules = $this->ModuleManager->getInstalled();
+
+        foreach ($modules as $module) {
+            $module_data = $this->ModuleManager->get($module->id);
+
+            foreach ($module_data->rows as $module_row) {
+                if (isset($module_row->meta->openprovider_module)) {
+                    $module_rows[] = $module_row;
+                }
+            }
+        }
+
+        return $module_rows;
     }
 }
