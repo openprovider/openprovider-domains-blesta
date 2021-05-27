@@ -1,25 +1,21 @@
 <?php
 
-use Brick\PhoneNumber\PhoneNumber;
-
 class Openprovider extends Module
 {
     /**
      * @const string
      */
     private const moduleName = 'openprovider';
-
     /**
      * @var string default module path
      */
-    private static string $defaultModuleViewPath;
+    private string $defaultModuleViewPath;
 
     /**
      * Openprovider constructor.
      */
     public function __construct()
     {
-//        Configure::errorReporting(-1);
         // Loading module config
         $this->loadConfig(__DIR__ . DS . 'config.json');
         
@@ -34,7 +30,7 @@ class Openprovider extends Module
 
         Configure::load('openprovider', __DIR__ . DS . 'config' . DS);
 
-        self::$defaultModuleViewPath = 'components' . DS . 'modules' . DS . self::moduleName . DS;
+        $this->defaultModuleViewPath = 'components' . DS . 'modules' . DS . self::moduleName . DS;
 
         if (is_null($this->getModule())) {
             $modules = $this->ModuleManager->getInstalled();
@@ -88,7 +84,7 @@ class Openprovider extends Module
         // Load the view into this object, so helpers can be automatically added to the view
         $this->view           = new View('manage', 'default');
         $this->view->base_uri = $this->base_uri;
-        $this->view->setDefaultView(self::$defaultModuleViewPath);
+        $this->view->setDefaultView($this->defaultModuleViewPath);
 
         // Load the helpers required for this view
         Loader::loadHelpers($this, ['Form', 'Html', 'Widget']);
@@ -121,7 +117,7 @@ class Openprovider extends Module
         // Load the view into this object, so helpers can be automatically added to the view
         $this->view           = new View('add_row', 'default');
         $this->view->base_uri = $this->base_uri;
-        $this->view->setDefaultView(self::$defaultModuleViewPath);
+        $this->view->setDefaultView($this->defaultModuleViewPath);
 
         // Load the helpers required for this view
         Loader::loadHelpers($this, ['Form', 'Html', 'Widget']);
@@ -147,7 +143,7 @@ class Openprovider extends Module
         // Load the view into this object, so helpers can be automatically added to the view
         $this->view           = new View('edit_row', 'default');
         $this->view->base_uri = $this->base_uri;
-        $this->view->setDefaultView(self::$defaultModuleViewPath);
+        $this->view->setDefaultView($this->defaultModuleViewPath);
 
         // Set initial module row meta fields for vars
         if (empty($vars)) {
@@ -271,27 +267,6 @@ class Openprovider extends Module
 
         $fields = new ModuleFields();
 
-        // Fetch all packages available for the given server or server group
-        $module_row = null;
-        if (isset($vars->module_group) && $vars->module_group == '') {
-            if (isset($vars->module_row) && $vars->module_row > 0) {
-                $module_row = $this->getModuleRow($vars->module_row);
-            } else {
-                $rows = $this->getModuleRows();
-                if (isset($rows[0])) {
-                    $module_row = $rows[0];
-                }
-                unset($rows);
-            }
-        } else {
-            // Fetch the 1st server from the list of servers in the selected group
-            $rows = $this->getModuleRows($vars->module_group);
-            if (isset($rows[0])) {
-                $module_row = $rows[0];
-            }
-            unset($rows);
-        }
-
         $types = [
             'domain' => Language::_('OpenProvider.package_fields.type_domain', true),
         ];
@@ -314,7 +289,7 @@ class Openprovider extends Module
         // Set all TLD checkboxes
         $tld_options = $fields->label(Language::_('OpenProvider.package_fields.tld_options', true));
 
-        $tlds = $this->getSupportedTlds();
+        $tlds = $this->getTlds();
         sort($tlds);
 
         foreach ($tlds as $tld) {
@@ -366,6 +341,7 @@ class Openprovider extends Module
      *  - pending
      *  - suspended
      * @return array|void
+     * @throws Exception
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-addService($package,array$vars=null,$parent_package=null,$parent_service=null,$status=%22pending%22)
      */
     public function addService($package, array $vars = null, $parent_package = null, $parent_service = null, $status = 'pending')
@@ -424,9 +400,10 @@ class Openprovider extends Module
                 return [
                     'name' => $name_server_name
                 ];
-            }, array_filter($package->meta->ns, function ($name_server_name) {return !empty($name_server_name);}));
+            }, array_filter($package->meta->ns, function ($name_server_name) {
+                return !empty($name_server_name);
+            }));
 
-            // Set all whois info from client ($vars['client_id'])
             if (!isset($this->Clients)) {
                 Loader::loadModels($this, ['Clients']);
             }
@@ -450,7 +427,7 @@ class Openprovider extends Module
             if (is_null($contact_number)) {
                 throw new Exception('OpenProvider.!error.client.phone_not_exist');
             }
-            // making it correct format
+            // processing phone to correct format
             $contact_number = PhoneAnalyzer::makePhoneCorrectFormat($contact_number, $client->country);
             if ($contact_number) {
                 $phone = PhoneAnalyzer::makePhoneArray($contact_number);
@@ -538,6 +515,24 @@ class Openprovider extends Module
         return $meta;
     }
 
+    /**
+     * This method attempts to update an existing service given the package,
+     * the service, and any input vars. If this service is an addon service,
+     * the parent package will be given.
+     * The parent service will also be given if the parent service has already been provisioned.
+     * This method returns an array containing an array of key=>value fields for each service field and its value,
+     * as well as whether the value should be encrypted.
+     *
+     * This method is very similar to addService().
+     *
+     * @param stdClass $package
+     * @param stdClass $service
+     * @param array $vars
+     * @param null $parent_package
+     * @param null $parent_service
+     * @return array|null
+     * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-editService($package,$service,array$vars=array(),$parent_package=null,$parent_service=null)
+     */
     public function editService($package, $service, array $vars = [], $parent_package = null, $parent_service = null)
     {
         return parent::editService($package, $service, $vars, $parent_package, $parent_service); // TODO: Change the autogenerated stub
@@ -550,7 +545,7 @@ class Openprovider extends Module
      * @return string[]
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-getTlds($module_row_id=null)
      */
-    public function getSupportedTlds($module_row_id = null)
+    public function getTlds($module_row_id = null)
     {
         return [
             '.com',
@@ -565,6 +560,7 @@ class Openprovider extends Module
      * @param string $domain
      * @param null $module_row_id
      * @return bool
+     * @throws Exception
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-checkAvailability($domain,$module_row_id=null)
      */
     public function checkAvailability($domain, $module_row_id = null)
@@ -674,6 +670,7 @@ class Openprovider extends Module
      * @param string|null $password
      * @param bool $test_mode
      * @return OpenProviderApi
+     * @throws Exception
      */
     private function getApi($username = null, $password = null, $test_mode = true)
     {
@@ -734,32 +731,6 @@ class Openprovider extends Module
         $last_response = $api->getLastResponse();
         $this->log($last_request['cmd'], json_encode($last_request['args']), 'input', true);
         $this->log($last_request['cmd'], json_encode($last_response->getData()), 'output', $last_response->getCode() == 0);
-    }
-
-    private function getTlds()
-    {
-        // Fetch the TLDs results from the cache, if they exist
-        $cache = Cache::fetchCache(
-            'tlds_prices',
-            Configure::get('Blesta.company_id') . DS . 'modules' . DS . 'openprovider' . DS
-        );
-
-        if ($cache) {
-            return unserialize(base64_decode($cache));
-        }
-
-        Loader::loadModels($this, ['Currencies']);
-
-        $row = $this->getRow();
-
-        $api = $this->getApi(
-            $row->meta->username,
-            $row->meta->password,
-            $row->meta->test_mode == 'true'
-        );
-
-        $response = $api->call('searchExtensionRequest', ['extensions' => $this->getSupportedTlds()])->getData();
-        $this->logRequest($api);
     }
 
     /**
