@@ -67,6 +67,12 @@ class OpenProviderApi
         ]);
     }
 
+    /**
+     * @param string $cmd
+     * @param array $args
+     * @return Response
+     * @throws \Symfony\Component\Serializer\Exception\ExceptionInterface
+     */
     public function call(string $cmd, array $args = [])
     {
         $response = new Response();
@@ -117,6 +123,9 @@ class OpenProviderApi
         return $return;
     }
 
+    /**
+     * @return ApiConfig
+     */
     public function getConfig()
     {
         return $this->api_config;
