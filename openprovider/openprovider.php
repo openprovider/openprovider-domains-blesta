@@ -684,6 +684,7 @@ class Openprovider extends Module
     private function splitDomainName($domain_name): array
     {
         $domain_name_array = explode('.', $domain_name);
+
         return [
             'name'      => $domain_name_array[0],
             'extension' => implode('.', array_slice($domain_name_array, 1)),

@@ -30,17 +30,14 @@ class DatabaseHelper
      */
     public function createOpenproviderTokenTable(): void
     {
-        try {
-            $this->record
-                ->setField('id', ['type' => 'int', 'size' => 10, 'unsigned' => true, 'auto_increment' => true])
-                ->setField('user_hash', ['type' => 'varchar', 'size' => 255])
-                ->setField('token', ['type' => 'varchar', 'size' => 255])
-                ->setField('until_date', ['type' => 'datetime', 'is_null' => true, 'default' => null])
-                ->setKey(['id'], 'primary')
-                ->setKey(['user_hash'], 'unique')
-                ->create(self::openproviderTokenTable);
-        } catch (\Exception $e) {
-        }
+        $this->record
+            ->setField('id', ['type' => 'int', 'size' => 10, 'unsigned' => true, 'auto_increment' => true])
+            ->setField('user_hash', ['type' => 'varchar', 'size' => 255])
+            ->setField('token', ['type' => 'varchar', 'size' => 255])
+            ->setField('until_date', ['type' => 'datetime', 'is_null' => true, 'default' => null])
+            ->setKey(['id'], 'primary')
+            ->setKey(['user_hash'], 'unique')
+            ->create(self::openproviderTokenTable);
     }
 
     /**
