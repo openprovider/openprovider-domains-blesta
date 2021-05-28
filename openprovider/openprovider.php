@@ -47,9 +47,10 @@ class Openprovider extends Module
      * The methods are invoked when the module is installed, upgraded, or uninstalled respectively.
      *
      * @return array|void
+     *
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-install/upgrade/uninstall()
      */
-    public function install()
+    public function install(): ?array
     {
         $database_helper = new DatabaseHelper($this->Record);
         $database_helper->createOpenproviderTokenTable();
@@ -60,9 +61,10 @@ class Openprovider extends Module
      * The methods are invoked when the module is installed, upgraded, or uninstalled respectively.
      *
      * @return array|void
+     *
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-install/upgrade/uninstall()
      */
-    public function uninstall($module_id, $last_instance)
+    public function uninstall($module_id, $last_instance): ?array
     {
         $database_helper = new DatabaseHelper($this->Record);
         $database_helper->deleteOpenproviderTokenTable();
@@ -75,11 +77,14 @@ class Openprovider extends Module
      *
      * @param mixed $module
      * @param array $vars
+     *
      * @return string
+     *
      * @throws Exception
+     *
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-manageModule($module,array&$vars)
      */
-    public function manageModule($module, array &$vars)
+    public function manageModule($module, array &$vars): string
     {
         // Load the view into this object, so helpers can be automatically added to the view
         $this->view           = new View('manage', 'default');
@@ -108,11 +113,14 @@ class Openprovider extends Module
      * Any post data submitted will be passed by reference in $vars.
      *
      * @param array $vars
+     *
      * @return string
+     *
      * @throws Exception
+     *
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-manageAddRow(array&$vars)
      */
-    public function manageAddRow(array &$vars)
+    public function manageAddRow(array &$vars): string
     {
         // Load the view into this object, so helpers can be automatically added to the view
         $this->view           = new View('add_row', 'default');
@@ -134,11 +142,14 @@ class Openprovider extends Module
      *
      * @param stdClass $module_row
      * @param array $vars
+     *
      * @return string
+     *
      * @throws Exception
+     *
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-manageEditRow($module_row,array&$vars)
      */
-    public function manageEditRow($module_row, array &$vars)
+    public function manageEditRow($module_row, array &$vars): string
     {
         // Load the view into this object, so helpers can be automatically added to the view
         $this->view           = new View('edit_row', 'default');
@@ -169,10 +180,12 @@ class Openprovider extends Module
      * as well as whether the value should be encrypted.
      *
      * @param array $vars
+     *
      * @return array
+     *
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-addModuleRow(array&$vars)
      */
-    public function addModuleRow(array &$vars)
+    public function addModuleRow(array &$vars): array
     {
         $allowed_fields   = ['username', 'password', 'test_mode', 'openprovider_module'];
         $encrypted_fields = ['password'];
@@ -214,10 +227,12 @@ class Openprovider extends Module
      *
      * @param $module_row
      * @param array $vars
+     *
      * @return array
+     *
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-editModuleRow($module_row,array&$vars)
      */
-    public function editModuleRow($module_row, array &$vars)
+    public function editModuleRow($module_row, array &$vars): array
     {
         $allowed_fields   = ['username', 'password', 'test_mode', 'openprovider_module'];
         $encrypted_fields = ['password'];
@@ -258,10 +273,12 @@ class Openprovider extends Module
      * Any post data submitted will be passed in $vars.
      *
      * @param null $vars
+     *
      * @return ModuleFields
+     *
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-getPackageFields($vars=null)
      */
-    public function getPackageFields($vars = null)
+    public function getPackageFields($vars = null): ModuleFields
     {
         Loader::loadHelpers($this, ['Html']);
 
@@ -341,10 +358,12 @@ class Openprovider extends Module
      *  - pending
      *  - suspended
      * @return array|void
+     *
      * @throws Exception
+     *
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-addService($package,array$vars=null,$parent_package=null,$parent_service=null,$status=%22pending%22)
      */
-    public function addService($package, array $vars = null, $parent_package = null, $parent_service = null, $status = 'pending')
+    public function addService($package, array $vars = null, $parent_package = null, $parent_service = null, $status = 'pending'): ?array
     {
         // Get the module row used for this service
         $row = $this->getModuleRow();
@@ -530,10 +549,12 @@ class Openprovider extends Module
      * @param array $vars
      * @param null $parent_package
      * @param null $parent_service
+     *
      * @return array|null
+     *
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-editService($package,$service,array$vars=array(),$parent_package=null,$parent_service=null)
      */
-    public function editService($package, $service, array $vars = [], $parent_package = null, $parent_service = null)
+    public function editService($package, $service, array $vars = [], $parent_package = null, $parent_service = null): ?array
     {
         return parent::editService($package, $service, $vars, $parent_package, $parent_service); // TODO: Change the autogenerated stub
     }
@@ -542,10 +563,12 @@ class Openprovider extends Module
      * The getTlds() method returns a list of the TLDs supported by the registrar module.
      *
      * @param int|null $module_row_id
+     *
      * @return string[]
+     *
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-getTlds($module_row_id=null)
      */
-    public function getTlds($module_row_id = null)
+    public function getTlds($module_row_id = null): array
     {
         return [
             '.com',
@@ -559,11 +582,14 @@ class Openprovider extends Module
      *
      * @param string $domain
      * @param null $module_row_id
+     *
      * @return bool
+     *
      * @throws Exception
+     *
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-checkAvailability($domain,$module_row_id=null)
      */
-    public function checkAvailability($domain, $module_row_id = null)
+    public function checkAvailability($domain, $module_row_id = null): bool
     {
         $row = $this->getModuleRow($module_row_id);
         $api = $this->getApi($row->meta->username, $row->meta->password, $row->meta->test_mode == 'true');
@@ -584,10 +610,12 @@ class Openprovider extends Module
      * @param string $password
      * @param string $username
      * @param string $test_mode 'true'/'false'
+     *
      * @return bool
+     *
      * @throws Exception
      */
-    public function validateConnection($password, $username, $test_mode = null)
+    public function validateConnection($password, $username, $test_mode = null): bool
     {
         $api = $this->getApi();
         $database_helper = new DatabaseHelper($this->Record);
@@ -615,9 +643,11 @@ class Openprovider extends Module
     /**
      * return list of rules for validate adding or editing reseller accounts
      *
+     * @param array $vars
+     *
      * @return array[][]
      */
-    private function getRowRules(&$vars)
+    private function getRowRules(&$vars): array
     {
         return [
             'username' => [
@@ -647,10 +677,11 @@ class Openprovider extends Module
     }
 
     /**
-     * @param $domain_name
+     * @param string $domain_name
+     *
      * @return array ['name', 'extension']
      */
-    private function splitDomainName($domain_name)
+    private function splitDomainName($domain_name): array
     {
         $domain_name_array = explode('.', $domain_name);
         return [
@@ -669,10 +700,12 @@ class Openprovider extends Module
      * @param string|null $username
      * @param string|null $password
      * @param bool $test_mode
+     *
      * @return OpenProviderApi
+     *
      * @throws Exception
      */
-    private function getApi($username = null, $password = null, $test_mode = true)
+    private function getApi($username = null, $password = null, $test_mode = true): OpenProviderApi
     {
         $api = new OpenProviderApi();
         $database_helper = new DatabaseHelper($this->Record);
@@ -714,18 +747,20 @@ class Openprovider extends Module
      * @param string $username
      * @param string $password
      * @param bool $test_mode
+     *
      * @return string
      */
-    private function generateUserHash($username, $password, $test_mode)
+    private function generateUserHash($username, $password, $test_mode): string
     {
         return md5(substr($username, 0, 2) . substr($password, 0, 2) . $test_mode ? 'on' : 'off');
     }
 
     /**
      * @param OpenProviderApi $api
+     *
      * @throws Exception
      */
-    private function logRequest(OpenProviderApi $api)
+    private function logRequest(OpenProviderApi $api): void
     {
         $last_request = $api->getLastRequest();
         $last_response = $api->getLastResponse();
@@ -750,7 +785,7 @@ class Openprovider extends Module
      *
      * @return array
      */
-    private function getRows()
+    private function getRows(): array
     {
         Loader::loadModels($this, ['ModuleManager']);
 
