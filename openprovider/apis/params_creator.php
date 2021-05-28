@@ -4,7 +4,7 @@ use phpDocumentor\Reflection\DocBlockFactory;
 
 class ParamsCreator
 {
-    const NO_CLASS = "no class";
+    const NO_CLASS = 'no class';
 
     /**
      * @param array $args

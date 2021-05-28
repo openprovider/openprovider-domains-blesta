@@ -20,7 +20,7 @@ class Openprovider extends Module
         $this->loadConfig(__DIR__ . DS . 'config.json');
         
         // Loading language
-        Language::loadLang(self::moduleName, null, dirname(__FILE__) . DS . "language" . DS);
+        Language::loadLang(self::moduleName, null, dirname(__FILE__) . DS . 'language' . DS);
 
         Loader::load(__DIR__ . DS . 'vendor' . DS . 'autoload.php');
         Loader::loadComponents($this, ['Input', 'Record']);
@@ -633,7 +633,7 @@ class Openprovider extends Module
             $database_helper->setOpenproviderTokenToDatabase(
                 $this->generateUserHash($username, $password, $test_mode == 'true'),
                 $token,
-                date("Y-m-d H:i:s", strtotime(date("Y-m-d H:i:s") . " +48 hours"))
+                date('Y-m-d H:i:s', strtotime(date('Y-m-d H:i:s') . ' +48 hours'))
             );
         }
 
@@ -732,7 +732,7 @@ class Openprovider extends Module
             return $api;
         }
 
-        $token_until_date = date("Y-m-d H:i:s", strtotime(date("Y-m-d H:i:s") . " +48 hours"));
+        $token_until_date = date('Y-m-d H:i:s', strtotime(date('Y-m-d H:i:s') . ' +48 hours'));
 
         $database_helper->setOpenproviderTokenToDatabase($user_hash, $token, $token_until_date);
 
