@@ -70,10 +70,12 @@ class OpenProviderApi
     /**
      * @param string $cmd
      * @param array $args
+     *
      * @return Response
+     *
      * @throws \Symfony\Component\Serializer\Exception\ExceptionInterface
      */
-    public function call(string $cmd, array $args = [])
+    public function call(string $cmd, array $args = []): Response
     {
         $response = new Response();
 
@@ -126,7 +128,7 @@ class OpenProviderApi
     /**
      * @return ApiConfig
      */
-    public function getConfig()
+    public function getConfig(): ApiConfig
     {
         return $this->api_config;
     }
@@ -134,9 +136,10 @@ class OpenProviderApi
     /**
      * @param Response $response
      * @param array $data
+     *
      * @return Response
      */
-    private function successResponse(Response $response, array $data)
+    private function successResponse(Response $response, array $data): Response
     {
         $response->setTotal($data['total'] ?? 0);
         unset($data['total']);
@@ -153,9 +156,10 @@ class OpenProviderApi
      * @param Response $response
      * @param string $message
      * @param int $code
+     *
      * @return Response
      */
-    private function failedResponse(Response $response, string $message, int $code)
+    private function failedResponse(Response $response, string $message, int $code): Response
     {
         $response->setMessage($message);
         $response->setCode($code);
@@ -166,7 +170,7 @@ class OpenProviderApi
     /**
      * @return array
      */
-    public function getLastRequest()
+    public function getLastRequest(): array
     {
         return $this->last_request;
     }
@@ -174,7 +178,7 @@ class OpenProviderApi
     /**
      * @return Response
      */
-    public function getLastResponse()
+    public function getLastResponse(): Response
     {
         return $this->last_response;
     }
