@@ -393,6 +393,21 @@ class Openprovider extends Module
                 ];
                 $rules = array_merge($rules, $rule);
             }
+            if ($vars['identification_type'] == 'company_registration_number') {
+                $rule = [
+                    'company_registration_number' => [
+                        'empty' => [
+                            'rule'        => ['isEmpty'],
+                            'negate'      => true,
+                            'message'     => Language::_('OpenProvider.!error.passport_number.empty', true),
+                            'post_format' => 'trim',
+                        ],
+                    ],
+                ];
+                $rules = array_merge($rules, $rule);
+                unset($rules['passport_number']);
+                unset($rules['passport_series']);
+            }
         }
 
         if (isset($rules) && count($rules) > 0) {
@@ -527,8 +542,7 @@ class Openprovider extends Module
                 }
             }
 
-            $extension_additional_fields = $this->getExtentionAdditionalFields($vars);
-
+            $additional_data = $this->getAdditionalData($vars);
             // putting contact data together
             $customer = [
                 'name' => [
@@ -538,6 +552,7 @@ class Openprovider extends Module
                 ],
                 'company_name' => $client->company,
                 'email' => $client->email,
+                'vat' => $client->settings['tax_id'],
                 'address' => [
                     'city' => $client->city,
                     'country' => $client->country,
@@ -547,8 +562,16 @@ class Openprovider extends Module
                     'number' => $contact_house_number,
                 ],
                 'phone' => $phone,
-
             ];
+
+            if (!empty($additional_data['customer_extension_additional_data'])) {
+                $customer['extension_additional_data'] = [
+                    [
+                        'name' => $splitted_domain_name['extension'],
+                        'data' => $additional_data['customer_extension_additional_data'],
+                    ]
+                ];
+            }
 
             // Creating contacts and saving handles to database
             $handles = [];
@@ -575,8 +598,12 @@ class Openprovider extends Module
                 'name_servers'   => $name_servers,
             ];
 
+            if (!empty($additional_data['domain_additional_data'])) {
+                $domain['additional_data'] = $additional_data['domain_additional_data'];
+            }
+
             if (isset($vars['auth']) && !empty($vars['auth'])) {
-                $domain['auth_code'] = $vars['auth'];
+                $domain['additional_data']['auth_code'] = $vars['auth'];
                 $domain_response = $api->call('transferDomainRequest', $domain);
             } else {
                 $domain_response = $api->call('createDomainRequest', $domain);
@@ -965,22 +992,30 @@ class Openprovider extends Module
     /**
      * @param $vars
      *
-     * @return array
+     * @return array [ 'domain_additional_data', 'customer_extension_additional_data' ]
      */
-    private function getExtentionAdditionalFields($vars)
+    private function getAdditionalData($vars)
     {
-        $extension_additional_fields = [];
-        if (isset($vars['passport_number'])) {
-            $extension_additional_fields['passport_number'] = $vars['passport_number'];
-        }
-        if (isset($vars['passport_series'])) {
-            $extension_additional_fields['passport_series'] = $vars['passport_series'];
-        }
-        if (isset($vars['company_registration_name'])) {
-            $extension_additional_fields['company_registration_name'] = $vars['company_registration_name'];
+        $domain_additional_data_keys = array_keys(\Openprovider\Api\Rest\Client\Domain\Model\DomainAdditionalData::openAPITypes());
+        $customer_extension_additional_data_keys = array_keys(\Openprovider\Api\Rest\Client\Person\Model\CustomerExtensionAdditionalData::openAPITypes());
+        
+        
+        $additionalData = [
+            'domain_additional_data' => [],
+            'customer_extension_additional_data' => [],
+        ];
+        
+        foreach($vars as $key => $value)  {
+            if (in_array($key, $domain_additional_data_keys)) {
+                $additionalData['domain_additional_data'][$key] = $value;
+            }
+
+            if (in_array($key, $customer_extension_additional_data_keys)) {
+                $additionalData['customer_extension_additional_data'][$key] = $value;
+            }
         }
 
-        return $extension_additional_fields;
+        return $additionalData;
     }
 
     private function debug(...$args)
