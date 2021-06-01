@@ -54,6 +54,14 @@ $lang['OpenProvider.nameserver.ns5'] = 'Name Server 5';
 
 // Domain Fields
 $lang['OpenProvider.domain.domain'] = 'Domain Name';
+$lang['OpenProvider.domain.identification_type'] = 'Identification Type';
+$lang['OpenProvider.domain.identification_type.passport_number'] = 'Passport Number';
+$lang['OpenProvider.domain.identification_type.passport_series'] = 'Passport Series';
+$lang['OpenProvider.domain.identification_type.company_registration_number'] = 'Company Registration Number';
+
+// Domain transfer fields
+$lang['OpenProvider.transfer.domain'] = 'Domain Name';
+$lang['OpenProvider.transfer.EPPCode'] = 'EPP Code';
 
 // Errors add/update row
 $lang['OpenProvider.!error.username.empty']            = 'Username field shouldn\'t be empty!';
@@ -61,3 +69,6 @@ $lang['OpenProvider.!error.password.empty']            = 'Password field shouldn
 $lang['OpenProvider.!error.password.valid_connection'] = 'Oops, something wrong: The username, password and test mode combination appear to be invalid, or your OpenProvider account may not be configured to allow API access.';
 $lang['OpenProvider.!error.client.not_exist']          = 'Client not exist!';
 $lang['OpenProvider.!error.client.phone_not_exist']    = 'Client`s phone number not exists!';
+$lang['OpenProvider.!error.epp.empty']                 = 'Domain transfers require an EPP code to be entered.';
+$lang['OpenProvider.!error.passport_number.empty']     = 'This tld require an passport number to be entered.';
+$lang['OpenProvider.!error.passport_series.empty']     = 'This tld require an passport series to be entered.';

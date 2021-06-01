@@ -340,6 +340,70 @@ class Openprovider extends Module
     }
 
     /**
+     * The validateService() method performs any input validation
+     * against the selected package and vars, and sets any input errors.
+     * This is typically called before attempting to provision a service
+     * within the addService() or editService() methods.
+     * It returns a boolean value indicating whether the given input is valid.
+     *
+     * @param stdClass $package
+     * @param array|null $vars
+     *
+     * @return bool
+     *
+     * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-validateService($package,array$vars=null)
+     */
+    public function validateService($package, array $vars = null)
+    {
+        $rules = [];
+        // Transfers (EPP Code)
+        if (isset($vars['transfer']) && ($vars['transfer'] == '1' || $vars['transfer'] == true)) {
+            $rule = [
+                'auth' => [
+                    'empty' => [
+                        'rule' => ['isEmpty'],
+                        'negate' => true,
+                        'message' => Language::_('OpenProvider.!error.epp.empty', true),
+                        'post_format' => 'trim'
+                    ]
+                ],
+            ];
+            $rules = array_merge($rules, $rule);
+        }
+
+        if (isset($vars['identification_type'])) {
+            if ($vars['identification_type'] == 'passport_number') {
+                $rule = [
+                    'passport_number' => [
+                        'empty' => [
+                            'rule'        => ['isEmpty'],
+                            'negate'      => true,
+                            'message'     => Language::_('OpenProvider.!error.passport_number.empty', true),
+                            'post_format' => 'trim',
+                        ],
+                    ],
+                    'passport_series' => [
+                        'empty' => [
+                            'rule'        => ['isEmpty'],
+                            'negate'      => true,
+                            'message'     => Language::_('OpenProvider.!error.passport_series.empty', true),
+                            'post_format' => 'trim',
+                        ]
+                    ],
+                ];
+                $rules = array_merge($rules, $rule);
+            }
+        }
+
+        if (isset($rules) && count($rules) > 0) {
+            $this->Input->setRules($rules);
+            return $this->Input->validates($vars);
+        }
+
+        return true;
+    }
+
+    /**
      * This method attempts to add a service given the package and input vars,
      * as well as the intended status. If this service is an addon service,
      * the parent package will be given. The parent service will also be given
@@ -372,21 +436,18 @@ class Openprovider extends Module
         $use_module = isset($vars['use_module']) && $vars['use_module'] == 'true';
 
         if ($is_service_domain) {
-            if (isset($vars['domain'])) {
-                $splitted_domain_name = $this->splitDomainName($vars['domain']);
-            } else {
+            if (!isset($vars['domain'])) {
                 // getting domain name if not exist in $vars
                 Loader::loadModels($this, ['Services']);
                 $domain = $this->Services->get($vars['service_id']);
 
                 foreach ($domain->fields as $field) {
-                    if ($field->key == 'domain') {
-                        $splitted_domain_name = $this->splitDomainName($field->value);
-                        $vars['domain'] = $field->value;
-                        break;
+                    if (!isset($vars[$field->key])) {
+                        $vars[$field->key] = $field->value;
                     }
                 }
             }
+            $splitted_domain_name = $this->splitDomainName($vars['domain']);
             $tld = '.' . $splitted_domain_name['extension'];
         }
 
@@ -459,9 +520,14 @@ class Openprovider extends Module
                 $contact_house_number = $contact_splitted_address['houseNumberParts']['base'];
                 $contact_street       = $contact_splitted_address['streetName'] . ' ' . $contact_splitted_address['additionToAddress2'];
             } catch (Exception $e) {
-                if (strpos($e->getMessage(), ' could not be splitted into street name and house number.') !== false)
+                if (strpos($e->getMessage(), ' could not be splitted into street name and house number.') !== false) {
                     $contact_street = $contact_full_address;
+                } else {
+                    throw $e;
+                }
             }
+
+            $extension_additional_fields = $this->getExtentionAdditionalFields($vars);
 
             // putting contact data together
             $customer = [
@@ -480,7 +546,8 @@ class Openprovider extends Module
                     'street' => $contact_street,
                     'number' => $contact_house_number,
                 ],
-                'phone' => $phone
+                'phone' => $phone,
+
             ];
 
             // Creating contacts and saving handles to database
@@ -508,8 +575,13 @@ class Openprovider extends Module
                 'name_servers'   => $name_servers,
             ];
 
-            // creating domain
-            $domain_response = $api->call('createDomainRequest', $domain);
+            if (isset($vars['auth']) && !empty($vars['auth'])) {
+                $domain['auth_code'] = $vars['auth'];
+                $domain_response = $api->call('transferDomainRequest', $domain);
+            } else {
+                $domain_response = $api->call('createDomainRequest', $domain);
+            }
+
             $this->logRequest($api);
 
             // if creation domain failed we need to delete customers for it
@@ -557,6 +629,90 @@ class Openprovider extends Module
     public function editService($package, $service, array $vars = [], $parent_package = null, $parent_service = null): ?array
     {
         return parent::editService($package, $service, $vars, $parent_package, $parent_service); // TODO: Change the autogenerated stub
+    }
+
+    public function getClientAddFields($package, $vars = null)
+    {
+        // Handle universal domain name
+        if (isset($vars->domain)) {
+            $vars->domain = $vars->domain;
+        }
+
+        if ($package->meta->type == 'domain') {
+            // Set default name servers
+            if (!isset($vars->ns) && isset($package->meta->ns)) {
+                $i = 1;
+                foreach ($package->meta->ns as $ns) {
+                    $vars->{'ns' . $i++} = $ns;
+                }
+            }
+
+            if (isset($vars->domain)) {
+                $splitted_domain_name = $this->splitDomainName($vars->domain);
+                $tld = $splitted_domain_name['extension'] ? '.' . $splitted_domain_name['extension'] : '';
+            }
+            // Handle transfer request
+            if ((isset($vars->transfer) && $vars->transfer) || isset($vars->auth)) {
+                $fields = array_merge(
+                    Configure::get('OpenProvider.transfer_fields'),
+                    (array) Configure::get('OpenProvider.domain_fields' . $tld)
+                );
+
+                // We should already have the domain name don't make editable
+                $fields['domain']['type'] = 'hidden';
+                $fields['domain']['label'] = null;
+                // we already know we're doing a transfer, don't make it editable
+                $fields['transfer']['type'] = 'hidden';
+                $fields['transfer']['label'] = null;
+
+            } else {
+                // Handle domain registration
+                $fields = array_merge(
+                    Configure::get('OpenProvider.nameserver_fields'),
+                    Configure::get('OpenProvider.domain_fields'),
+                    (array) Configure::get('OpenProvider.domain_fields' . $tld)
+                );
+
+                // We should already have the domain name don't make editable
+                $fields['domain']['type'] = 'hidden';
+                $fields['domain']['label'] = null;
+            }
+
+            $module_fields = $this->arrayToModuleFields($fields, null, $vars);
+
+            if (
+                isset($fields['identification_type']) &&
+                isset($fields['passport_number']) &&
+                isset($fields['passport_series']) &&
+                isset($fields['company_registration_number'])
+            ) {
+                $module_fields->setHtml(
+                    "
+                        <script type=\"text/javascript\">
+                            $(document).ready(function() {
+                                $('#company_registration_number_id').prop('disabled', true).val('');
+                                
+                                $('#identification_type_id').change(function () {
+                                    if ($(this).val() == 'company_registration_number') {
+                                        $('#company_registration_number_id').prop('disabled', false);
+                                        $('#passport_number_id').prop('disabled', true).val('');
+                                        $('#passport_series_id').prop('disabled', true).val('');
+                                    } else {
+                                        $('#company_registration_number_id').prop('disabled', true).val('');
+                                        $('#passport_number_id').prop('disabled', false);
+                                        $('#passport_series_id').prop('disabled', false);
+                                    }
+                                });
+                            });
+                        </script>
+                    "
+                );
+            }
+        }
+
+
+        // Determine whether this is an AJAX request
+        return (isset($module_fields) ? $module_fields : new ModuleFields());
     }
 
     /**
@@ -804,5 +960,33 @@ class Openprovider extends Module
         }
 
         return $module_rows;
+    }
+
+    /**
+     * @param $vars
+     *
+     * @return array
+     */
+    private function getExtentionAdditionalFields($vars)
+    {
+        $extension_additional_fields = [];
+        if (isset($vars['passport_number'])) {
+            $extension_additional_fields['passport_number'] = $vars['passport_number'];
+        }
+        if (isset($vars['passport_series'])) {
+            $extension_additional_fields['passport_series'] = $vars['passport_series'];
+        }
+        if (isset($vars['company_registration_name'])) {
+            $extension_additional_fields['company_registration_name'] = $vars['company_registration_name'];
+        }
+
+        return $extension_additional_fields;
+    }
+
+    private function debug(...$args)
+    {
+        echo '<pre>';
+        var_dump(...$args);
+        echo '</pre>';
     }
 }
