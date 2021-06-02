@@ -501,6 +501,7 @@ class Openprovider extends Module
                     ];
                 }
             }
+
             if (empty($name_servers)) {
                 foreach($package->meta->ns as $ns) {
                     if (empty($ns)) {
@@ -512,70 +513,9 @@ class Openprovider extends Module
                 }
             }
 
-            if (!isset($this->Clients)) {
-                Loader::loadModels($this, ['Clients']);
-            }
-            if (!isset($this->Contacts)) {
-                Loader::loadModels($this, ['Contacts']);
-            }
-
-            Loader::load(__DIR__ . DS . 'helpers' . DS . 'address_splitter.php');
-            Loader::load(__DIR__ . DS . 'helpers' . DS . 'phone_analyzer.php');
-
-            $client = $this->Clients->get($vars['client_id']);
-
-            // We cant create domain and contacts without client information
-            if (!$client) {
-                throw new Exception(Language::_('OpenProvider.!error.client.not_exist', true));
-            }
-
-            // taking phone number
-            $contact_numbers = $this->Contacts->getNumbers($client->contact_id);
-            $contact_number = $contact_numbers[0]->number ?? null;
-            if (is_null($contact_number)) {
-                throw new Exception('OpenProvider.!error.client.phone_not_exist');
-            }
-            // processing phone to correct format
-            $contact_number = PhoneAnalyzer::makePhoneCorrectFormat($contact_number, $client->country);
-            if ($contact_number) {
-                $phone = PhoneAnalyzer::makePhoneArray($contact_number);
-            }
-
-            // processing address
-            try {
-                $contact_full_address = $client->address1 . ' ' . $client->address2;
-                $contact_splitted_address = AddressSplitter::splitAddress($contact_full_address);
-                $contact_house_number = $contact_splitted_address['houseNumberParts']['base'];
-                $contact_street       = $contact_splitted_address['streetName'] . ' ' . $contact_splitted_address['additionToAddress2'];
-            } catch (Exception $e) {
-                if (strpos($e->getMessage(), ' could not be splitted into street name and house number.') !== false) {
-                    $contact_street = $contact_full_address;
-                } else {
-                    throw $e;
-                }
-            }
+            $customer = $this->getCustomerData($vars);
 
             $additional_data = $this->getAdditionalData($vars);
-            // putting contact data together
-            $customer = [
-                'name' => [
-                    'first_name' => $client->first_name,
-                    'last_name'  => $client->last_name,
-                    'initials'   => mb_substr($client->first_name, 0, 1) . '.' . mb_substr($client->last_name, 0, 1)
-                ],
-                'company_name' => $client->company,
-                'email' => $client->email,
-                'vat' => $client->settings['tax_id'],
-                'address' => [
-                    'city' => $client->city,
-                    'country' => $client->country,
-                    'zipcode' => $client->zip,
-                    'state' => $client->state,
-                    'street' => $contact_street,
-                    'number' => $contact_house_number,
-                ],
-                'phone' => $phone,
-            ];
 
             if (!empty($additional_data['customer_extension_additional_data'])) {
                 $customer['extension_additional_data'] = [
@@ -585,7 +525,6 @@ class Openprovider extends Module
                     ]
                 ];
             }
-
 
             // Creating contacts and saving handles to database
             $handles = [];
@@ -1025,6 +964,84 @@ class Openprovider extends Module
         }
 
         return $additionalData;
+    }
+
+    /**
+     * return customer data formatted for openprovider
+     *
+     * @param array|null $vars
+     *
+     * @return array
+     */
+    private function getCustomerData(?array $vars = null)
+    {
+        $customer = [];
+
+        if (!isset($this->Clients)) {
+            Loader::loadModels($this, ['Clients']);
+        }
+        if (!isset($this->Contacts)) {
+            Loader::loadModels($this, ['Contacts']);
+        }
+
+        Loader::load(__DIR__ . DS . 'helpers' . DS . 'address_splitter.php');
+        Loader::load(__DIR__ . DS . 'helpers' . DS . 'phone_analyzer.php');
+
+        $client = $this->Clients->get($vars['client_id']);
+
+        // We cant create domain and contacts without client information
+        if (!$client) {
+            throw new Exception(Language::_('OpenProvider.!error.client.not_exist', true));
+        }
+
+        // taking phone number
+        $contact_numbers = $this->Contacts->getNumbers($client->contact_id);
+        $contact_number = $contact_numbers[0]->number ?? null;
+        if (is_null($contact_number)) {
+            throw new Exception('OpenProvider.!error.client.phone_not_exist');
+        }
+        // processing phone to correct format
+        $contact_number = PhoneAnalyzer::makePhoneCorrectFormat($contact_number, $client->country);
+        if ($contact_number) {
+            $phone = PhoneAnalyzer::makePhoneArray($contact_number);
+        }
+
+        // processing address
+        try {
+            $contact_full_address = $client->address1 . ' ' . $client->address2;
+            $contact_splitted_address = AddressSplitter::splitAddress($contact_full_address);
+            $contact_house_number = $contact_splitted_address['houseNumberParts']['base'];
+            $contact_street       = $contact_splitted_address['streetName'] . ' ' . $contact_splitted_address['additionToAddress2'];
+        } catch (Exception $e) {
+            if (strpos($e->getMessage(), ' could not be splitted into street name and house number.') !== false) {
+                $contact_street = $contact_full_address;
+            } else {
+                throw $e;
+            }
+        }
+
+        // putting contact data together
+        $customer = [
+            'name' => [
+                'first_name' => $client->first_name,
+                'last_name'  => $client->last_name,
+                'initials'   => mb_substr($client->first_name, 0, 1) . '.' . mb_substr($client->last_name, 0, 1)
+            ],
+            'company_name' => $client->company,
+            'email' => $client->email,
+            'vat' => $client->settings['tax_id'],
+            'address' => [
+                'city' => $client->city,
+                'country' => $client->country,
+                'zipcode' => $client->zip,
+                'state' => $client->state,
+                'street' => $contact_street,
+                'number' => $contact_house_number,
+            ],
+            'phone' => $phone,
+        ];
+
+        return $customer;
     }
 
     private function debug(...$args)
