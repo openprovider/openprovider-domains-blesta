@@ -472,12 +472,14 @@ class Openprovider extends Module
             Configure::get('OpenProvider.domain_fields'),
             (array) Configure::get('OpenProvider.domain_fields' . $tld),
             (array) Configure::get('OpenProvider.nameserver_fields'),
+            (array) Configure::get('OpenProvider.transfer_fields'),
             ['years' => true, 'transfer' => $vars['transfer'] ?? 1]
         );
 
         // if method use module
         if ($use_module) {
             $api = $this->getApi($row->meta->username, $row->meta->password, $row->meta->test_mode == 'true');
+
             $database_helper = new DatabaseHelper($this->Record);
 
             if ($package->meta->type == 'domain') {
@@ -490,15 +492,25 @@ class Openprovider extends Module
                     }
                 }
             }
-
             // generating name_servers array: ['name' => name_server]
-            $name_servers = array_map(function ($name_server_name) {
-                return [
-                    'name' => $name_server_name
-                ];
-            }, array_filter($package->meta->ns, function ($name_server_name) {
-                return !empty($name_server_name);
-            }));
+            $name_servers = [];
+            for ($i = 1; $i < 6; $i++) {
+                if (isset($vars['ns'.$i]) && !empty($vars['ns'.$i])) {
+                    $name_servers[] = [
+                        'name' => $vars['ns'.$i]
+                    ];
+                }
+            }
+            if (empty($name_servers)) {
+                foreach($package->meta->ns as $ns) {
+                    if (empty($ns)) {
+                        continue;
+                    }
+                    $name_servers[] = [
+                        'name' => $ns,
+                    ];
+                }
+            }
 
             if (!isset($this->Clients)) {
                 Loader::loadModels($this, ['Clients']);
@@ -574,25 +586,21 @@ class Openprovider extends Module
                 ];
             }
 
+
             // Creating contacts and saving handles to database
             $handles = [];
-            $handles['owner_handle'] = $api->call('createCustomerRequest', $customer)->getData()['handle'];
-            $this->logRequest($api);
-            $handles['admin_handle'] = $api->call('createCustomerRequest', $customer)->getData()['handle'];
-            $this->logRequest($api);
-            $handles['tech_handle'] = $api->call('createCustomerRequest', $customer)->getData()['handle'];
-            $this->logRequest($api);
-            $handles['billing_handle'] = $api->call('createCustomerRequest', $customer)->getData()['handle'];
+            $handle = $api->call('createCustomerRequest', $customer)->getData()['handle'];
+            $handles['all'] = $handle;
             $this->logRequest($api);
 
             $database_helper->setServiceHandles($vars['service_id'], $handles);
 
             // putting domain data together
             $domain = [
-                'admin_handle'   => $handles['admin_handle'],
-                'billing_handle' => $handles['billing_handle'],
-                'owner_handle'   => $handles['owner_handle'],
-                'tech_handle'    => $handles['tech_handle'],
+                'admin_handle'   => $handle,
+                'billing_handle' => $handle,
+                'owner_handle'   => $handle,
+                'tech_handle'    => $handle,
                 'domain'         => $splitted_domain_name,
                 'period'         => $vars['years'],
                 'name_servers'   => $name_servers,
@@ -604,7 +612,7 @@ class Openprovider extends Module
             }
 
             if (isset($vars['auth']) && !empty($vars['auth'])) {
-                $domain['additional_data']['auth_code'] = $vars['auth'];
+                $domain['auth_code'] = $vars['auth'];
                 $domain_response = $api->call('transferDomainRequest', $domain);
             } else {
                 $domain_response = $api->call('createDomainRequest', $domain);
@@ -870,7 +878,7 @@ class Openprovider extends Module
         $domain_name_array = explode('.', $domain_name);
 
         return [
-            'name'      => $domain_name_array[0],
+            'name'      => trim($domain_name_array[0]),
             'extension' => implode('.', array_slice($domain_name_array, 1)),
         ];
     }

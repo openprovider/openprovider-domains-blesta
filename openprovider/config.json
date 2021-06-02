@@ -1,10 +1,11 @@
 {
     "version": "0.0.1",
     "name": "OpenProvider.config.name",
+    "type": "registrar",
     "description": "OpenProvider.config.description",
     "authors": [
         {
-            "name": "OpenProvider",
+            "name": "Openprovider",
             "url": "https://openprovider.com/"
         },
         {

@@ -1,8 +1,8 @@
 <?php
 
 // Module config - main
-$lang['OpenProvider.config.name']        = 'OpenProvider';
-$lang['OpenProvider.config.description'] = 'OpenProvider module for Blesta.';
+$lang['OpenProvider.config.name']        = 'Openprovider';
+$lang['OpenProvider.config.description'] = 'Openprovider module for Blesta.';
 
 // Module config - module section
 $lang['OpenProvider.config.module.row']      = 'Registrar Account';
