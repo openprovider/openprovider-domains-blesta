@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . DS . 'response.php';
+require_once __DIR__ . DS . 'last_request.php';
 require_once __DIR__ . DS . 'command_mapping.php';
 require_once __DIR__ . DS . 'api_configuration.php';
 require_once __DIR__ . DS . 'params_creator.php';
@@ -31,10 +32,7 @@ class OpenProviderApi
 
     private Response $last_response;
 
-    /**
-     * @var array ['cmd' => string, 'args' => array]
-     */
-    private $last_request;
+    private LastRequest $last_request;
 
     public function __construct()
     {
@@ -43,7 +41,6 @@ class OpenProviderApi
         $this->api_config = new ApiConfig();
         $this->params_creator = new ParamsCreator();
         $this->serializer = new Serializer([new ObjectNormalizer(null, new CamelCaseToSnakeCaseNameConverter())]);
-        $this->last_request = ['cmd' => '', 'args' => []];
         $this->http_client = new HttpClient([
             'headers' => [
                 'X-Client' => self::API_CLIENT_NAME
@@ -78,10 +75,9 @@ class OpenProviderApi
             $service->getConfig()->setAccessToken($this->api_config->getToken());
         }
 
-        $this->last_request = [
-            'cmd' => $cmd,
-            'args' => $args
-        ];
+        $this->last_request = new LastRequest();
+        $this->last_request->setArgs($args);
+        $this->last_request->setCommand($cmd);
 
         try {
             $requestParameters = $this->params_creator->createParameters($args, $service, $apiMethod);
@@ -152,9 +148,9 @@ class OpenProviderApi
     }
 
     /**
-     * @return array
+     * @return LastRequest
      */
-    public function getLastRequest(): array
+    public function getLastRequest(): LastRequest
     {
         return $this->last_request;
     }
