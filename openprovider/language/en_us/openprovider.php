@@ -40,9 +40,9 @@ $lang['OpenProvider.row_meta.test_mode_true']  = 'Yes';
 $lang['OpenProvider.row_meta.test_mode_false'] = 'No';
 
 // Package fields
-$lang['OpenProvider.package_fields.type'] = 'Type';
+$lang['OpenProvider.package_fields.type']        = 'Type';
 $lang['OpenProvider.package_fields.type_domain'] = 'Domain Registration';
-$lang['OpenProvider.package_fields.type_ssl'] = 'SSL Certificate';
+$lang['OpenProvider.package_fields.type_ssl']    = 'SSL Certificate';
 $lang['OpenProvider.package_fields.tld_options'] = 'TLDs';
 
 // Name servers
@@ -53,14 +53,14 @@ $lang['OpenProvider.nameserver.ns4'] = 'Name Server 4';
 $lang['OpenProvider.nameserver.ns5'] = 'Name Server 5';
 
 // Domain Fields
-$lang['OpenProvider.domain.domain'] = 'Domain Name';
-$lang['OpenProvider.domain.identification_type'] = 'Identification Type';
-$lang['OpenProvider.domain.identification_type.passport_number'] = 'Passport Number';
-$lang['OpenProvider.domain.identification_type.passport_series'] = 'Passport Series';
+$lang['OpenProvider.domain.domain']                                          = 'Domain Name';
+$lang['OpenProvider.domain.identification_type']                             = 'Identification Type';
+$lang['OpenProvider.domain.identification_type.passport_number']             = 'Passport Number';
+$lang['OpenProvider.domain.identification_type.passport_series']             = 'Passport Series';
 $lang['OpenProvider.domain.identification_type.company_registration_number'] = 'Company Registration Number';
 
 // Domain transfer fields
-$lang['OpenProvider.transfer.domain'] = 'Domain Name';
+$lang['OpenProvider.transfer.domain']  = 'Domain Name';
 $lang['OpenProvider.transfer.EPPCode'] = 'EPP Code';
 
 // Errors add/update row

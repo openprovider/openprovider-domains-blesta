@@ -5,7 +5,7 @@ class Openprovider extends Module
     /**
      * @const string
      */
-    private const moduleName = 'openprovider';
+    private const ModuleName = 'openprovider';
 
     /**
      * @var string default module path
@@ -21,7 +21,7 @@ class Openprovider extends Module
         $this->loadConfig(__DIR__ . DS . 'config.json');
         
         // Loading language
-        Language::loadLang(self::moduleName, null, dirname(__FILE__) . DS . 'language' . DS);
+        Language::loadLang(self::ModuleName, null, dirname(__FILE__) . DS . 'language' . DS);
 
         Loader::load(__DIR__ . DS . 'vendor' . DS . 'autoload.php');
         Loader::loadComponents($this, ['Input', 'Record']);
@@ -31,12 +31,12 @@ class Openprovider extends Module
 
         Configure::load('openprovider', __DIR__ . DS . 'config' . DS);
 
-        $this->defaultModuleViewPath = 'components' . DS . 'modules' . DS . self::moduleName . DS;
+        $this->defaultModuleViewPath = 'components' . DS . 'modules' . DS . self::ModuleName . DS;
 
         if (is_null($this->getModule())) {
             $modules = $this->ModuleManager->getInstalled();
             foreach ($modules as $module) {
-                if (strtolower($module->name) == self::moduleName) {
+                if (strtolower($module->name) == self::ModuleName) {
                     $this->setModule($module);
                     break;
                 }
@@ -73,13 +73,11 @@ class Openprovider extends Module
     }
 
     /**
-     * The manageModule() method returns HTML content for the manage module page for the given module.
-     * Any post data submitted will be passed by reference in $vars.
-     *
      * @param mixed $module
      * @param array $vars
      *
-     * @return string
+     * @return string HTML content for the manage module page for the given module.
+     * Any post data submitted will be passed by reference in $vars.
      *
      * @throws Exception
      *
@@ -99,7 +97,7 @@ class Openprovider extends Module
         $link_buttons = [];
         foreach ($module->rows as $row) {
             if (isset($row->meta->username) && isset($row->meta->password)) {
-                # here additional buttons
+                // TODO: additional buttons
             }
         }
 
@@ -110,12 +108,10 @@ class Openprovider extends Module
     }
 
     /**
-     * The manageAddRow() method returns HTML content for the add module row page.
-     * Any post data submitted will be passed by reference in $vars.
-     *
      * @param array $vars
      *
-     * @return string
+     * @return string HTML content for the add module row page.
+     * Any post data submitted will be passed by reference in $vars.
      *
      * @throws Exception
      *
@@ -138,13 +134,11 @@ class Openprovider extends Module
     }
 
     /**
-     * The manageEditRow() method returns HTML content for the edit module row page given the module row to update.
-     * Any post data submitted will be passed by reference in $vars.
-     *
      * @param stdClass $module_row
      * @param array $vars
      *
-     * @return string
+     * @return string HTML content for the edit module row page given the module row to update.
+     * Any post data submitted will be passed by reference in $vars.
      *
      * @throws Exception
      *
@@ -176,13 +170,10 @@ class Openprovider extends Module
     }
 
     /**
-     * This method attempts to add a module row given the input vars, and sets any Input errors on failure.
-     * This method returns meta fields as an array containing an array of key=>value fields for each meta field and its value,
-     * as well as whether the value should be encrypted.
-     *
      * @param array $vars
      *
-     * @return array
+     * @return array meta fields as an array containing an array of key=>value fields for each meta field and its value,
+     * as well as whether the value should be encrypted.
      *
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-addModuleRow(array&$vars)
      */
@@ -219,17 +210,16 @@ class Openprovider extends Module
     }
 
     /**
-     * This method attempts to update a module row given the input vars and the module row,
-     * and sets any Input errors on failure.
-     * This method returns meta fields as an array containing an array of key=>value fields for each meta field and its value,
-     * as well as whether the value should be encrypted.
-     *
-     * This method is very similar to addModuleRow().
-     *
      * @param $module_row
      * @param array $vars
      *
-     * @return array
+     * @return array meta fields as an array containing an array of key=>value fields for each meta field and its value,
+     * as well as whether the value should be encrypted.
+     *
+     * This method attempts to update a module row given the input vars and the module row,
+     * and sets any Input errors on failure.
+     *
+     * This method is very similar to addModuleRow().
      *
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-editModuleRow($module_row,array&$vars)
      */
@@ -269,13 +259,11 @@ class Openprovider extends Module
     }
 
     /**
-     * This method returns a ModuleFields object containing all fields used when adding or editing a package,
-     * including any javascript that can be executed when the page is rendered with those fields.
-     * Any post data submitted will be passed in $vars.
-     *
      * @param null $vars
      *
-     * @return ModuleFields
+     * @return ModuleFields contains all fields used when adding or editing a package,
+     * including any javascript that can be executed when the page is rendered with those fields.
+     * Any post data submitted will be passed in $vars.
      *
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-getPackageFields($vars=null)
      */
@@ -341,20 +329,14 @@ class Openprovider extends Module
     }
 
     /**
-     * The validateService() method performs any input validation
-     * against the selected package and vars, and sets any input errors.
-     * This is typically called before attempting to provision a service
-     * within the addService() or editService() methods.
-     * It returns a boolean value indicating whether the given input is valid.
-     *
      * @param stdClass $package
      * @param array|null $vars
      *
-     * @return bool
+     * @return bool value indicating whether the given input is valid.
      *
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-validateService($package,array$vars=null)
      */
-    public function validateService($package, array $vars = null)
+    public function validateService($package, array $vars = null): bool
     {
         $rules = [];
         // Transfers (EPP Code)
@@ -420,13 +402,6 @@ class Openprovider extends Module
     }
 
     /**
-     * This method attempts to add a service given the package and input vars,
-     * as well as the intended status. If this service is an addon service,
-     * the parent package will be given. The parent service will also be given
-     * if the parent service has already been provisioned.
-     * This method returns an array containing an array of key=>value fields for each service field and its value,
-     * as well as whether the value should be encrypted.
-     *
      * @param stdClass $package
      * @param array|null $vars
      * @param null $parent_package
@@ -437,7 +412,8 @@ class Openprovider extends Module
      *  - canceled
      *  - pending
      *  - suspended
-     * @return array|void
+     * @return array|void contains an array of key=>value fields for each service field and its value,
+     * as well as whether the value should be encrypted.
      *
      * @throws Exception
      *
@@ -582,22 +558,16 @@ class Openprovider extends Module
     }
 
     /**
-     * This method attempts to update an existing service given the package,
-     * the service, and any input vars. If this service is an addon service,
-     * the parent package will be given.
-     * The parent service will also be given if the parent service has already been provisioned.
-     * This method returns an array containing an array of key=>value fields for each service field and its value,
-     * as well as whether the value should be encrypted.
-     *
-     * This method is very similar to addService().
-     *
      * @param stdClass $package
      * @param stdClass $service
      * @param array $vars
      * @param null $parent_package
      * @param null $parent_service
      *
-     * @return array|null
+     * @return array|null contains an array of key=>value fields for each service field and its value,
+     * as well as whether the value should be encrypted.
+     *
+     * This method is very similar to addService().
      *
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-editService($package,$service,array$vars=array(),$parent_package=null,$parent_service=null)
      */
@@ -607,18 +577,16 @@ class Openprovider extends Module
     }
 
     /**
-     * This method returns a ModuleFileds object containing fields displayed when a client goes to create a service.
-     * 
-     * This method is very similar to getAdminAddFields().
-     *
      * @param stdClass $package
      * @param null $vars
      *
-     * @return ModuleFields
+     * @return ModuleFields contains fields displayed when a client goes to create a service.
+     *
+     * This method is very similar to getAdminAddFields().
      *
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-getClientAddFields($package,$vars=null)
      */
-    public function getClientAddFields($package, $vars = null)
+    public function getClientAddFields($package, $vars = null): ModuleFields
     {
         // Handle universal domain name
         if (isset($vars->domain)) {
@@ -702,11 +670,9 @@ class Openprovider extends Module
     }
 
     /**
-     * The getTlds() method returns a list of the TLDs supported by the registrar module.
-     *
      * @param int|null $module_row_id
      *
-     * @return string[]
+     * @return string[] a list of the TLDs supported by the registrar module.
      *
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-getTlds($module_row_id=null)
      */
@@ -719,13 +685,10 @@ class Openprovider extends Module
     }
 
     /**
-     * The checkAvailability() method is called when an availability check is made for a domain from an order form.
-     * It must return true if the domain is available or false otherwise.
-     *
      * @param string $domain
      * @param null $module_row_id
      *
-     * @return bool
+     * @return bool true if the domain is available or false otherwise.
      *
      * @throws Exception
      *
@@ -747,13 +710,11 @@ class Openprovider extends Module
     }
 
     /**
-     * return true if credentials are correct in OpenProvider
-     *
      * @param string $password
      * @param string $username
      * @param string $test_mode 'true'/'false'
      *
-     * @return bool
+     * @return bool true if credentials are correct in OpenProvider
      *
      * @throws Exception
      */
@@ -783,11 +744,9 @@ class Openprovider extends Module
     }
 
     /**
-     * return list of rules for validate adding or editing reseller accounts
-     *
      * @param array $vars
      *
-     * @return array[][]
+     * @return array[][] list of rules for validate adding or editing reseller accounts
      */
     private function getRowRules(&$vars): array
     {
@@ -834,17 +793,15 @@ class Openprovider extends Module
     }
 
     /**
-     * return OpenProvider api client.
-     * if username and password are exists, this method configure api, set token and host.
-     * if username or password are null, it returns clear api client that require to configure it.
-     * if username and password provided but incorrect, it returns clear api client without exceptions.
-     * Also this method save token to database, if it not exists or exists but expired.
-     *
      * @param string|null $username
      * @param string|null $password
      * @param bool $test_mode
      *
-     * @return OpenProviderApi
+     * @return OpenProviderApi OpenProvider api client.
+     * if username and password are exists, this method configure api, set token and host.
+     * if username or password are null, it returns clear api client that require to configure it.
+     * if username and password provided but incorrect, it returns clear api client without exceptions.
+     * Also this method save token to database, if it not exists or exists but expired.
      *
      * @throws Exception
      */
@@ -885,13 +842,11 @@ class Openprovider extends Module
     }
 
     /**
-     * Generating user hash by a rule
-     *
      * @param string $username
      * @param string $password
      * @param bool $test_mode
      *
-     * @return string
+     * @return string user hash by a rule
      */
     private function generateUserHash($username, $password, $test_mode): string
     {
@@ -912,9 +867,7 @@ class Openprovider extends Module
     }
 
     /**
-     * return the OpenProvider first row
-     *
-     * @return mixed|null
+     * @return mixed|null the OpenProvider first row
      */
     private function getRow()
     {
@@ -924,9 +877,7 @@ class Openprovider extends Module
     }
 
     /**
-     * return all the OpenProvider module rows
-     *
-     * @return array
+     * @return array the OpenProvider module rows
      */
     private function getRows(): array
     {
@@ -978,11 +929,9 @@ class Openprovider extends Module
     }
 
     /**
-     * return customer data formatted for openprovider
-     *
      * @param array|null $vars
      *
-     * @return array
+     * @return array customer data formatted for openprovider
      */
     private function getCustomerData(?array $vars = null)
     {
@@ -1055,6 +1004,11 @@ class Openprovider extends Module
         return $customer;
     }
 
+    /**
+     * function print data
+     *
+     * @param ...$args
+     */
     private function debug(...$args)
     {
         echo '<pre>';
