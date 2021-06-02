@@ -6,6 +6,7 @@ class Openprovider extends Module
      * @const string
      */
     private const moduleName = 'openprovider';
+
     /**
      * @var string default module path
      */
@@ -452,7 +453,7 @@ class Openprovider extends Module
 
         if ($is_service_domain) {
             if (!isset($vars['domain'])) {
-                // getting domain name if not exist in $vars
+                // getting domain data if not exist in $vars
                 Loader::loadModels($this, ['Services']);
                 $domain = $this->Services->get($vars['service_id']);
 
@@ -592,10 +593,10 @@ class Openprovider extends Module
                 'billing_handle' => $handles['billing_handle'],
                 'owner_handle'   => $handles['owner_handle'],
                 'tech_handle'    => $handles['tech_handle'],
-                'autorenew'      => 'off',
                 'domain'         => $splitted_domain_name,
                 'period'         => $vars['years'],
                 'name_servers'   => $name_servers,
+                'autorenew'      => 'off',
             ];
 
             if (!empty($additional_data['domain_additional_data'])) {

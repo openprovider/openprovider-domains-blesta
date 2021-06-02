@@ -6,15 +6,13 @@ class DatabaseHelper
      * @const string
      */
     private const openproviderTokenTable = 'openprovider_token';
+
     /**
      * @const string
      */
     private const openproviderHandlesTable = 'openprovider_handles';
 
-    /**
-     * @var Minphp\Record\Record
-     */
-    private $record;
+    private Minphp\Record\Record $record;
 
     /**
      * DatabaseHelper constructor.
