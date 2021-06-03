@@ -10,7 +10,7 @@ class Openprovider extends Module
     /**
      * @var string default module path
      */
-    private string $defaultModuleViewPath;
+    private string $default_module_view_path;
 
     /**
      * Openprovider constructor.
@@ -31,7 +31,7 @@ class Openprovider extends Module
 
         Configure::load('openprovider', __DIR__ . DS . 'config' . DS);
 
-        $this->defaultModuleViewPath = 'components' . DS . 'modules' . DS . self::ModuleName . DS;
+        $this->default_module_view_path = 'components' . DS . 'modules' . DS . self::ModuleName . DS;
 
         if (is_null($this->getModule())) {
             $modules = $this->ModuleManager->getInstalled();
@@ -88,7 +88,7 @@ class Openprovider extends Module
         // Load the view into this object, so helpers can be automatically added to the view
         $this->view           = new View('manage', 'default');
         $this->view->base_uri = $this->base_uri;
-        $this->view->setDefaultView($this->defaultModuleViewPath);
+        $this->view->setDefaultView($this->default_module_view_path);
 
         // Load the helpers required for this view
         Loader::loadHelpers($this, ['Form', 'Html', 'Widget']);
@@ -122,7 +122,7 @@ class Openprovider extends Module
         // Load the view into this object, so helpers can be automatically added to the view
         $this->view           = new View('add_row', 'default');
         $this->view->base_uri = $this->base_uri;
-        $this->view->setDefaultView($this->defaultModuleViewPath);
+        $this->view->setDefaultView($this->default_module_view_path);
 
         // Load the helpers required for this view
         Loader::loadHelpers($this, ['Form', 'Html', 'Widget']);
@@ -149,7 +149,7 @@ class Openprovider extends Module
         // Load the view into this object, so helpers can be automatically added to the view
         $this->view           = new View('edit_row', 'default');
         $this->view->base_uri = $this->base_uri;
-        $this->view->setDefaultView($this->defaultModuleViewPath);
+        $this->view->setDefaultView($this->default_module_view_path);
 
         // Set initial module row meta fields for vars
         if (empty($vars)) {
@@ -406,12 +406,16 @@ class Openprovider extends Module
      * @param array|null $vars
      * @param null $parent_package
      * @param null $parent_service
-     * @param string $status The status of the service being added. These include:
-     *
+     * @param string $status The status of the service being added. Possible values:
+     * 
      *  - active
+     *
      *  - canceled
+     *
      *  - pending
+     *
      *  - suspended
+     *
      * @return array|void contains an array of key=>value fields for each service field and its value,
      * as well as whether the value should be encrypted.
      *
@@ -427,18 +431,9 @@ class Openprovider extends Module
         $is_service_domain = $package->meta->type == 'domain';
         $use_module = isset($vars['use_module']) && $vars['use_module'] == 'true';
 
+        $vars = array_merge($vars, $this->getServiceFields($vars['service_id']));
+        
         if ($is_service_domain) {
-            if (!isset($vars['domain'])) {
-                // getting domain data if not exist in $vars
-                Loader::loadModels($this, ['Services']);
-                $domain = $this->Services->get($vars['service_id']);
-
-                foreach ($domain->fields as $field) {
-                    if (!isset($vars[$field->key])) {
-                        $vars[$field->key] = $field->value;
-                    }
-                }
-            }
             $splitted_domain_name = $this->splitDomainName($vars['domain']);
             $tld = '.' . $splitted_domain_name['extension'];
         }
@@ -504,13 +499,17 @@ class Openprovider extends Module
 
             // Creating contacts and saving handles to database
             $handles = [];
-            $handle = $api->call('createCustomerRequest', $customer)->getData()['handle'];
-            $handles['all'] = $handle;
+            $handle = $api->call('createCustomerRequest', $customer);
             $this->logRequest($api);
+
+            if (!isset($handle->getData()['handle'])) {
+                throw new Exception($handle->getMessage(), $handle->getCode());
+            }
+
+            $handles['all'] = $handle;
 
             $database_helper->setServiceHandles($vars['service_id'], $handles);
 
-            // putting domain data together
             $domain = [
                 'admin_handle'   => $handle,
                 'billing_handle' => $handle,
@@ -1002,6 +1001,27 @@ class Openprovider extends Module
         ];
 
         return $customer;
+    }
+
+    /**
+     * @param $service_id
+     * 
+     * @return array 
+     */
+    private function getServiceFields($service_id)
+    {
+        if (!isset($this->Services)) {
+            Loader::loadModels($this, ['Services']);
+        }
+
+        $service = $this->Services->get($service_id);
+
+        $service_data = [];
+        foreach ($service->fields as $field) {
+            $service_data[$field->key] = $field->value;
+        }
+
+        return $service_data;
     }
 
     /**
