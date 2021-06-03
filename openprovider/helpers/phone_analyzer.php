@@ -5,17 +5,20 @@ use Brick\PhoneNumber\PhoneNumber;
 class PhoneAnalyzer
 {
     /**
-     * @param string $phone
+     * Moke phone number from NNNNNNNNNNNNN to +NNN.NNNNNNNNNN format
      *
-     * @return string
+     * @param string $phone
+     * @param null $default_region
+     *
+     * @return string phone number +NNN.NNNNNNNNNN
      */
-    public static function makePhoneCorrectFormat($phone, $defaultRegion = null): string
+    public static function makePhoneCorrectFormat($phone, $default_region = null): string
     {
         if (is_null($phone)) {
             return '';
         }
 
-        $phone_number = PhoneNumber::parse($phone, $defaultRegion);
+        $phone_number = PhoneNumber::parse($phone, $default_region);
 
         $country_code = $phone_number->getCountryCode();
         $national_number = $phone_number->getNationalNumber();
@@ -24,6 +27,8 @@ class PhoneAnalyzer
     }
 
     /**
+     * Make array with partials of phone number. phone number should be +NNN.NNNNNNNNNN format
+     *
      * @param $phone
      *
      * @return array [ 'area_code', 'country_code', 'subscriber_number' ]
@@ -31,11 +36,11 @@ class PhoneAnalyzer
     public static function makePhoneArray($phone): array
     {
         $pos            = strpos($phone, '.');
-        $areaCodeLength = 3;
+        $area_code_length = 3;
 
         $country_code      = substr($phone, 0, $pos);
-        $area_code         = substr($phone, $pos + 1, $areaCodeLength);
-        $subscriber_number = substr($phone, $pos + 1 + $areaCodeLength);
+        $area_code         = substr($phone, $pos + 1, $area_code_length);
+        $subscriber_number = substr($phone, $pos + 1 + $area_code_length);
 
         return [
             'country_code'      => $country_code,

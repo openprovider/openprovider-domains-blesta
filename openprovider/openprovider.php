@@ -1,11 +1,21 @@
 <?php
 
+use Openprovider\Api\Rest\Client\Domain\Model\DomainAdditionalData;
+use Openprovider\Api\Rest\Client\Person\Model\CustomerExtensionAdditionalData;
+
 class Openprovider extends Module
 {
     /**
      * @const string
      */
     private const ModuleName = 'openprovider';
+
+    /**
+     * @const string
+     */
+    private const TransferOperation = 'transfer';
+    private const RegisterOperation = 'register';
+
 
     /**
      * @var string default module path
@@ -19,7 +29,7 @@ class Openprovider extends Module
     {
         // Loading module config
         $this->loadConfig(__DIR__ . DS . 'config.json');
-        
+
         // Loading language
         Language::loadLang(self::ModuleName, null, dirname(__FILE__) . DS . 'language' . DS);
 
@@ -93,16 +103,7 @@ class Openprovider extends Module
         // Load the helpers required for this view
         Loader::loadHelpers($this, ['Form', 'Html', 'Widget']);
 
-        // Rendering additional buttons if reseller exists
-        $link_buttons = [];
-        foreach ($module->rows as $row) {
-            if (isset($row->meta->username) && isset($row->meta->password)) {
-                // TODO: additional buttons
-            }
-        }
-
         $this->view->set('module', $module);
-        $this->view->set('link_buttons', $link_buttons);
 
         return $this->view->fetch();
     }
@@ -210,6 +211,40 @@ class Openprovider extends Module
     }
 
     /**
+     * @param array $vars
+     *
+     * @return array[][] list of rules for validate adding or editing reseller accounts
+     */
+    private function getRowRules(&$vars): array
+    {
+        return [
+            'username' => [
+                'valid' => [
+                    'rule'    => 'isEmpty',
+                    'negate'  => true,
+                    'message' => Language::_('OpenProvider.!error.username.empty', true)
+                ]
+            ],
+            'password' => [
+                'valid' => [
+                    'rule'    => 'isEmpty',
+                    'negate'  => true,
+                    'message' => Language::_('OpenProvider.!error.password.empty', true)
+                ],
+                'valid_connection' => [
+                    'last'    => true,
+                    'message' => Language::_('OpenProvider.!error.password.valid_connection', true),
+                    'rule'    => [
+                        [$this, 'validateConnection'],
+                        $vars['username'],
+                        $vars['test_mode'] ?? 'false'
+                    ],
+                ]
+            ]
+        ];
+    }
+
+    /**
      * @param $module_row
      * @param array $vars
      *
@@ -314,7 +349,11 @@ class Openprovider extends Module
 
         // Set nameservers
         for ($i = 1; $i <= 5; $i++) {
-            $type = $fields->label(Language::_('OpenProvider.nameserver.ns' . $i, true), 'openprovider_ns' . $i);
+            $type = $fields->label(
+                Language::_('OpenProvider.nameserver.ns' . $i, true),
+                'openprovider_ns' . $i
+            );
+
             $type->attach(
                 $fields->fieldText(
                     'meta[ns][]',
@@ -322,10 +361,26 @@ class Openprovider extends Module
                     ['id' => 'openprovider_ns' . $i]
                 )
             );
+
             $fields->setField($type);
         }
 
         return $fields;
+    }
+
+    /**
+     * @param int|null $module_row_id
+     *
+     * @return string[] a list of the TLDs supported by the registrar module.
+     *
+     * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-getTlds($module_row_id=null)
+     */
+    public function getTlds($module_row_id = null): array
+    {
+        return [
+            '.com',
+            '.es'
+        ];
     }
 
     /**
@@ -341,12 +396,12 @@ class Openprovider extends Module
         $rules = [];
         // Transfers (EPP Code)
         if (isset($vars['transfer']) && ($vars['transfer'] == '1' || $vars['transfer'] == true)) {
-            $rule = [
+            $rule  = [
                 'auth' => [
                     'empty' => [
-                        'rule' => ['isEmpty'],
-                        'negate' => true,
-                        'message' => Language::_('OpenProvider.!error.epp.empty', true),
+                        'rule'        => ['isEmpty'],
+                        'negate'      => true,
+                        'message'     => Language::_('OpenProvider.!error.epp.empty', true),
                         'post_format' => 'trim'
                     ]
                 ],
@@ -356,7 +411,7 @@ class Openprovider extends Module
 
         if (isset($vars['identification_type'])) {
             if ($vars['identification_type'] == 'passport_number') {
-                $rule = [
+                $rule  = [
                     'passport_number' => [
                         'empty' => [
                             'rule'        => ['isEmpty'],
@@ -376,8 +431,9 @@ class Openprovider extends Module
                 ];
                 $rules = array_merge($rules, $rule);
             }
+
             if ($vars['identification_type'] == 'company_registration_number') {
-                $rule = [
+                $rule  = [
                     'company_registration_number' => [
                         'empty' => [
                             'rule'        => ['isEmpty'],
@@ -423,27 +479,33 @@ class Openprovider extends Module
      *
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-addService($package,array$vars=null,$parent_package=null,$parent_service=null,$status=%22pending%22)
      */
-    public function addService($package, array $vars = null, $parent_package = null, $parent_service = null, $status = 'pending'): ?array
+    public function addService(
+        $package,
+        array $vars = null,
+        $parent_package = null,
+        $parent_service = null,
+        $status = 'pending'
+    ): ?array
     {
         // Get the module row used for this service
         $row = $this->getModuleRow();
 
         $is_service_domain = $package->meta->type == 'domain';
-        $use_module = isset($vars['use_module']) && $vars['use_module'] == 'true';
+        $use_module        = isset($vars['use_module']) && $vars['use_module'] == 'true';
 
         $vars = array_merge($vars, $this->getServiceFields($vars['service_id']));
-        
+
         if ($is_service_domain) {
             $splitted_domain_name = $this->splitDomainName($vars['domain']);
-            $tld = '.' . $splitted_domain_name['extension'];
+            $tld                  = '.' . $splitted_domain_name['extension'];
         }
 
         // taking configuration fields
         $input_fields = array_merge(
             Configure::get('OpenProvider.domain_fields'),
-            (array) Configure::get('OpenProvider.domain_fields' . $tld),
-            (array) Configure::get('OpenProvider.nameserver_fields'),
-            (array) Configure::get('OpenProvider.transfer_fields'),
+            (array)Configure::get('OpenProvider.domain_fields' . $tld),
+            (array)Configure::get('OpenProvider.nameserver_fields'),
+            (array)Configure::get('OpenProvider.transfer_fields'),
             ['years' => true, 'transfer' => $vars['transfer'] ?? 1]
         );
 
@@ -452,12 +514,12 @@ class Openprovider extends Module
             $this->createDomainInOp($row, $vars, $package);
         }
 
-        $meta = [];
+        $meta   = [];
         $fields = array_intersect_key($vars, $input_fields);
         foreach ($fields as $key => $value) {
             $meta[] = [
-                'key' => $key,
-                'value' => $value,
+                'key'       => $key,
+                'value'     => $value,
                 'encrypted' => 0
             ];
         }
@@ -466,456 +528,9 @@ class Openprovider extends Module
     }
 
     /**
-     * @param stdClass $package
-     * @param stdClass $service
-     * @param array $vars
-     * @param null $parent_package
-     * @param null $parent_service
-     *
-     * @return array|null contains an array of key=>value fields for each service field and its value,
-     * as well as whether the value should be encrypted.
-     *
-     * This method is very similar to addService().
-     *
-     * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-editService($package,$service,array$vars=array(),$parent_package=null,$parent_service=null)
-     */
-    public function editService($package, $service, array $vars = [], $parent_package = null, $parent_service = null): ?array
-    {
-        return parent::editService($package, $service, $vars, $parent_package, $parent_service); // TODO: Change the autogenerated stub
-    }
-
-    /**
-     * @param stdClass $package
-     * @param null $vars
-     *
-     * @return ModuleFields contains fields displayed when a client goes to create a service.
-     *
-     * This method is very similar to getAdminAddFields().
-     *
-     * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-getClientAddFields($package,$vars=null)
-     */
-    public function getClientAddFields($package, $vars = null): ModuleFields
-    {
-        // Handle universal domain name
-        if (isset($vars->domain)) {
-            $vars->domain = $vars->domain;
-        }
-
-        if ($package->meta->type == 'domain') {
-            // Set default name servers
-            if (!isset($vars->ns) && isset($package->meta->ns)) {
-                $i = 1;
-                foreach ($package->meta->ns as $ns) {
-                    $vars->{'ns' . $i++} = $ns;
-                }
-            }
-
-            if (isset($vars->domain)) {
-                $splitted_domain_name = $this->splitDomainName($vars->domain);
-                $tld = $splitted_domain_name['extension'] ? '.' . $splitted_domain_name['extension'] : '';
-            }
-            // Handle transfer request
-            if ((isset($vars->transfer) && $vars->transfer) || isset($vars->auth)) {
-                $fields = array_merge(
-                    Configure::get('OpenProvider.transfer_fields'),
-                    (array) Configure::get('OpenProvider.domain_fields' . $tld)
-                );
-
-                // We should already have the domain name don't make editable
-                $fields['domain']['type'] = 'hidden';
-                $fields['domain']['label'] = null;
-                // we already know we're doing a transfer, don't make it editable
-                $fields['transfer']['type'] = 'hidden';
-                $fields['transfer']['label'] = null;
-
-            } else {
-                // Handle domain registration
-                $fields = array_merge(
-                    Configure::get('OpenProvider.nameserver_fields'),
-                    Configure::get('OpenProvider.domain_fields'),
-                    (array) Configure::get('OpenProvider.domain_fields' . $tld)
-                );
-
-                // We should already have the domain name don't make editable
-                $fields['domain']['type'] = 'hidden';
-                $fields['domain']['label'] = null;
-            }
-
-            $module_fields = $this->arrayToModuleFields($fields, null, $vars);
-
-            if (
-                isset($fields['identification_type']) &&
-                isset($fields['passport_number']) &&
-                isset($fields['passport_series']) &&
-                isset($fields['company_registration_number'])
-            ) {
-                $module_fields->setHtml(
-                    "
-                        <script type=\"text/javascript\">
-                            $(document).ready(function() {
-                                $('#company_registration_number_id').prop('disabled', true).val('');
-                                
-                                $('#identification_type_id').change(function () {
-                                    if ($(this).val() == 'company_registration_number') {
-                                        $('#company_registration_number_id').prop('disabled', false);
-                                        $('#passport_number_id').prop('disabled', true).val('');
-                                        $('#passport_series_id').prop('disabled', true).val('');
-                                    } else {
-                                        $('#company_registration_number_id').prop('disabled', true).val('');
-                                        $('#passport_number_id').prop('disabled', false);
-                                        $('#passport_series_id').prop('disabled', false);
-                                    }
-                                });
-                            });
-                        </script>
-                    "
-                );
-            }
-        }
-
-        // Determine whether this is an AJAX request
-        return (isset($module_fields) ? $module_fields : new ModuleFields());
-    }
-
-    /**
-     * @param int|null $module_row_id
-     *
-     * @return string[] a list of the TLDs supported by the registrar module.
-     *
-     * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-getTlds($module_row_id=null)
-     */
-    public function getTlds($module_row_id = null): array
-    {
-        return [
-            '.com',
-            '.es'
-        ];
-    }
-
-    /**
-     * @param string $domain
-     * @param null $module_row_id
-     *
-     * @return bool true if the domain is available or false otherwise.
-     *
-     * @throws Exception
-     *
-     * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-checkAvailability($domain,$module_row_id=null)
-     */
-    public function checkAvailability($domain, $module_row_id = null): bool
-    {
-        $row = $this->getModuleRow($module_row_id);
-        $api = $this->getApi($row->meta->username, $row->meta->password, $row->meta->test_mode == 'true');
-        $args = [
-            $this->splitDomainName($domain)
-        ];
-
-        $response = $api->call('checkDomainRequest', ['domains' => $args])->getData();
-
-        $this->logRequest($api);
-
-        return $response['results'][0]['status'] == 'free';
-    }
-
-    /**
-     * @param string $password
-     * @param string $username
-     * @param string $test_mode 'true'/'false'
-     *
-     * @return bool true if credentials are correct in OpenProvider
-     *
-     * @throws Exception
-     */
-    public function validateConnection($password, $username, $test_mode = null): bool
-    {
-        $api = $this->getApi();
-        $database_helper = new DatabaseHelper($this->Record);
-
-        $api->getConfig()->setHost($test_mode == 'true' ? OpenProviderApi::API_CTE_URL : OpenProviderApi::API_URL);
-
-        $token = $api->call('generateAuthTokenRequest', ['username' => $username, 'password' => $password])
-                ->getData()['token'] ?? '';
-
-        $this->logRequest($api);
-
-        $is_token_exists = strlen($token) > 0;
-
-        if ($is_token_exists) {
-            $database_helper->setOpenproviderTokenToDatabase(
-                $this->generateUserHash($username, $password, $test_mode == 'true'),
-                $token,
-                date('Y-m-d H:i:s', strtotime(date('Y-m-d H:i:s') . ' +48 hours'))
-            );
-        }
-
-        return $is_token_exists;
-    }
-
-    /**
-     * @param array $vars
-     *
-     * @return array[][] list of rules for validate adding or editing reseller accounts
-     */
-    private function getRowRules(&$vars): array
-    {
-        return [
-            'username' => [
-                'valid' => [
-                    'rule'    => 'isEmpty',
-                    'negate'  => true,
-                    'message' => Language::_('OpenProvider.!error.username.empty', true)
-                ]
-            ],
-            'password' => [
-                'valid'            => [
-                    'rule'    => 'isEmpty',
-                    'negate'  => true,
-                    'message' => Language::_('OpenProvider.!error.password.empty', true)
-                ],
-                'valid_connection' => [
-                    'last' => true,
-                    'rule' => [
-                        [$this, 'validateConnection'],
-                        $vars['username'],
-                        $vars['test_mode'] ?? 'false'
-                    ],
-                    'message' => Language::_('OpenProvider.!error.password.valid_connection', true)
-                ]
-            ]
-        ];
-    }
-
-    /**
-     * @param string $domain_name
-     *
-     * @return array ['name', 'extension']
-     */
-    private function splitDomainName($domain_name): array
-    {
-        $domain_name_array = explode('.', $domain_name);
-
-        return [
-            'name'      => trim($domain_name_array[0]),
-            'extension' => implode('.', array_slice($domain_name_array, 1)),
-        ];
-    }
-
-    /**
-     * @param string|null $username
-     * @param string|null $password
-     * @param bool $test_mode
-     *
-     * @return OpenProviderApi OpenProvider api client.
-     * if username and password are exists, this method configure api, set token and host.
-     * if username or password are null, it returns clear api client that require to configure it.
-     * if username and password provided but incorrect, it returns clear api client without exceptions.
-     * Also this method save token to database, if it not exists or exists but expired.
-     *
-     * @throws Exception
-     */
-    private function getApi($username = null, $password = null, $test_mode = true): OpenProviderApi
-    {
-        $api = new OpenProviderApi();
-        $database_helper = new DatabaseHelper($this->Record);
-
-        $api->getConfig()->setHost($test_mode ? OpenProviderApi::API_CTE_URL : OpenProviderApi::API_URL);
-
-        if (is_null($username) || is_null($password)) {
-            return $api;
-        }
-
-        $user_hash = $this->generateUserHash($username, $password, $test_mode);
-
-        $token = $database_helper->getOpenproviderTokenFromDatabase($user_hash);
-        if ($token) {
-            $api->getConfig()->setToken($token);
-            return $api;
-        }
-
-        $token = $api->call('generateAuthTokenRequest', ['username' => $username, 'password' => $password])
-                ->getData()['token'] ?? '';
-        $this->logRequest($api);
-
-        if (!$token) {
-            return $api;
-        }
-
-        $token_until_date = date('Y-m-d H:i:s', strtotime(date('Y-m-d H:i:s') . ' +48 hours'));
-
-        $database_helper->setOpenproviderTokenToDatabase($user_hash, $token, $token_until_date);
-
-        $api->getConfig()->setToken($token);
-
-        return $api;
-    }
-
-    /**
-     * @param string $username
-     * @param string $password
-     * @param bool $test_mode
-     *
-     * @return string user hash by a rule
-     */
-    private function generateUserHash($username, $password, $test_mode): string
-    {
-        return md5(substr($username, 0, 2) . substr($password, 0, 2) . $test_mode ? 'on' : 'off');
-    }
-
-    /**
-     * @param OpenProviderApi $api
-     *
-     * @throws Exception
-     */
-    private function logRequest(OpenProviderApi $api): void
-    {
-        $last_request = $api->getLastRequest();
-        $last_response = $api->getLastResponse();
-        $this->log($last_request->getCommand(), json_encode($last_request->getArgs()), 'input', true);
-        $this->log($last_request->getCommand(), json_encode($last_response->getData()), 'output', $last_response->getCode() == 0);
-    }
-
-    /**
-     * @return mixed|null the OpenProvider first row
-     */
-    private function getRow()
-    {
-        $module_rows = $this->getRows();
-
-        return isset($module_rows[0]) ? $module_rows[0] : null;
-    }
-
-    /**
-     * @return array the OpenProvider module rows
-     */
-    private function getRows(): array
-    {
-        Loader::loadModels($this, ['ModuleManager']);
-
-        $module_rows = [];
-        $modules = $this->ModuleManager->getInstalled();
-
-        foreach ($modules as $module) {
-            $module_data = $this->ModuleManager->get($module->id);
-
-            foreach ($module_data->rows as $module_row) {
-                if (isset($module_row->meta->openprovider_module)) {
-                    $module_rows[] = $module_row;
-                }
-            }
-        }
-
-        return $module_rows;
-    }
-
-    /**
-     * @param $vars
-     *
-     * @return array [ 'domain_additional_data', 'customer_extension_additional_data' ]
-     */
-    private function getAdditionalData($vars)
-    {
-        $domain_additional_data_keys = array_keys(\Openprovider\Api\Rest\Client\Domain\Model\DomainAdditionalData::openAPITypes());
-        $customer_extension_additional_data_keys = array_keys(\Openprovider\Api\Rest\Client\Person\Model\CustomerExtensionAdditionalData::openAPITypes());
-        
-        
-        $additionalData = [
-            'domain_additional_data' => [],
-            'customer_extension_additional_data' => [],
-        ];
-        
-        foreach($vars as $key => $value)  {
-            if (in_array($key, $domain_additional_data_keys)) {
-                $additionalData['domain_additional_data'][$key] = $value;
-            }
-
-            if (in_array($key, $customer_extension_additional_data_keys)) {
-                $additionalData['customer_extension_additional_data'][$key] = $value;
-            }
-        }
-
-        return $additionalData;
-    }
-
-    /**
-     * @param array|null $vars
-     *
-     * @return array customer data formatted for Openprovider
-     *
-     * @throws Exception
-     */
-    private function getCustomerData(?array $vars = null): array
-    {
-        if (!isset($this->Clients)) {
-            Loader::loadModels($this, ['Clients']);
-        }
-        if (!isset($this->Contacts)) {
-            Loader::loadModels($this, ['Contacts']);
-        }
-
-        Loader::load(__DIR__ . DS . 'helpers' . DS . 'address_splitter.php');
-        Loader::load(__DIR__ . DS . 'helpers' . DS . 'phone_analyzer.php');
-
-        $client = $this->Clients->get($vars['client_id']);
-
-        // We cant create domain and contacts without client information
-        if (!$client) {
-            throw new Exception(Language::_('OpenProvider.!error.client.not_exist', true));
-        }
-
-        // taking phone number
-        $contact_numbers = $this->Contacts->getNumbers($client->contact_id);
-        $contact_number = $contact_numbers[0]->number ?? null;
-        if (is_null($contact_number)) {
-            throw new Exception('OpenProvider.!error.client.phone_not_exist');
-        }
-        // processing phone to correct format
-        $contact_number = PhoneAnalyzer::makePhoneCorrectFormat($contact_number, $client->country);
-        if ($contact_number) {
-            $phone = PhoneAnalyzer::makePhoneArray($contact_number);
-        }
-
-        // processing address
-        try {
-            $contact_full_address = $client->address1 . ' ' . $client->address2;
-            $contact_splitted_address = AddressSplitter::splitAddress($contact_full_address);
-            $contact_house_number = $contact_splitted_address['houseNumberParts']['base'];
-            $contact_street       = $contact_splitted_address['streetName'] . ' ' . $contact_splitted_address['additionToAddress2'];
-        } catch (Exception $e) {
-            if (strpos($e->getMessage(), ' could not be splitted into street name and house number.') !== false) {
-                $contact_street = $contact_full_address;
-            } else {
-                throw $e;
-            }
-        }
-
-        // putting contact data together
-        $customer = [
-            'name' => [
-                'first_name' => $client->first_name,
-                'last_name'  => $client->last_name,
-                'initials'   => mb_substr($client->first_name, 0, 1) . '.' . mb_substr($client->last_name, 0, 1)
-            ],
-            'company_name' => $client->company,
-            'email' => $client->email,
-            'vat' => $client->settings['tax_id'],
-            'address' => [
-                'city' => $client->city,
-                'country' => $client->country,
-                'zipcode' => $client->zip,
-                'state' => $client->state,
-                'street' => $contact_street,
-                'number' => $contact_house_number,
-            ],
-            'phone' => $phone,
-        ];
-
-        return $customer;
-    }
-
-    /**
      * @param $service_id
-     * 
-     * @return array 
+     *
+     * @return array
      */
     private function getServiceFields($service_id)
     {
@@ -934,34 +549,18 @@ class Openprovider extends Module
     }
 
     /**
-     * @param array $vars
-     * @param array $default_name_servers
+     * @param string $domain_name
      *
-     * @return array structure [['name' => name_server],]
+     * @return array ['name', 'extension']
      */
-    private function getNameServersFromVarsOrDefault(array $vars, array $default_name_servers = []): array
+    private function splitDomainName($domain_name): array
     {
-        $name_servers = [];
-        for ($i = 1; $i < 6; $i++) {
-            if (isset($vars['ns'.$i]) && !empty($vars['ns'.$i])) {
-                $name_servers[] = [
-                    'name' => $vars['ns'.$i]
-                ];
-            }
-        }
+        $domain_name_array = explode('.', $domain_name);
 
-        if (empty($name_servers)) {
-            foreach($default_name_servers as $ns) {
-                if (empty($ns)) {
-                    continue;
-                }
-                $name_servers[] = [
-                    'name' => $ns,
-                ];
-            }
-        }
-
-        return $name_servers;
+        return [
+            'name'      => trim($domain_name_array[0]),
+            'extension' => implode('.', array_slice($domain_name_array, 1)),
+        ];
     }
 
     /**
@@ -970,7 +569,6 @@ class Openprovider extends Module
      * @param $package
      *
      * @throws \Symfony\Component\Serializer\Exception\ExceptionInterface
-     *
      */
     private function createDomainInOp($row, $vars, $package)
     {
@@ -1008,7 +606,7 @@ class Openprovider extends Module
 
         // Creating contacts and saving handles to database
         $handles = [];
-        $handle = $api->call('createCustomerRequest', $customer);
+        $handle  = $api->call('createCustomerRequest', $customer);
         $this->logRequest($api);
 
         if (!isset($handle->getData()['handle'])) {
@@ -1034,12 +632,13 @@ class Openprovider extends Module
             $domain['additional_data'] = $additional_data['domain_additional_data'];
         }
 
+        $api_command = 'createDomainRequest';
         if (isset($vars['auth']) && !empty($vars['auth'])) {
             $domain['auth_code'] = $vars['auth'];
-            $domain_response = $api->call('transferDomainRequest', $domain);
-        } else {
-            $domain_response = $api->call('createDomainRequest', $domain);
+            $api_command = 'transferDomainRequest';
         }
+
+        $domain_response = $api->call($api_command, $domain);
 
         $this->logRequest($api);
 
@@ -1050,6 +649,455 @@ class Openprovider extends Module
                 $this->logRequest($api);
             }
         }
+    }
+
+    /**
+     * @param string|null $username
+     * @param string|null $password
+     * @param bool $test_mode
+     *
+     * @return OpenProviderApi OpenProvider api client.
+     * if username and password are exists, this method configure api, set token and host.
+     * if username or password are null, it returns clear api client that require to configure it.
+     * if username and password provided but incorrect, it returns clear api client without exceptions.
+     * Also this method save token to database, if it not exists or exists but expired.
+     *
+     * @throws Exception
+     */
+    private function getApi($username = null, $password = null, $test_mode = true): OpenProviderApi
+    {
+        $api             = new OpenProviderApi();
+        $database_helper = new DatabaseHelper($this->Record);
+
+        $api->getConfig()->setHost($test_mode ? OpenProviderApi::API_CTE_URL : OpenProviderApi::API_URL);
+
+        if (is_null($username) || is_null($password)) {
+            return $api;
+        }
+
+        $user_hash = $this->generateUserHash($username, $password, $test_mode);
+
+        $token = $database_helper->getOpenproviderTokenFromDatabase($user_hash);
+
+        if ($token) {
+            $api->getConfig()->setToken($token);
+
+            return $api;
+        }
+
+        $token = $api->call('generateAuthTokenRequest', ['username' => $username, 'password' => $password])
+                ->getData()['token'] ?? '';
+        $this->logRequest($api);
+
+        if (!$token) {
+            return $api;
+        }
+
+        $token_until_date = date('Y-m-d H:i:s', strtotime(date('Y-m-d H:i:s') . ' +48 hours'));
+
+        $database_helper->setOpenproviderTokenToDatabase($user_hash, $token, $token_until_date);
+
+        $api->getConfig()->setToken($token);
+
+        return $api;
+    }
+
+    /**
+     * @param string $username
+     * @param string $password
+     * @param bool $test_mode
+     *
+     * @return string user hash by a rule
+     */
+    private function generateUserHash($username, $password, $test_mode): string
+    {
+        return md5(
+            substr($username, 0, 2) .
+            substr($password, 0, 2) .
+            ($test_mode ? 'on' : 'off')
+        );
+    }
+
+    /**
+     * @param OpenProviderApi $api
+     *
+     * @throws Exception
+     */
+    private function logRequest(OpenProviderApi $api): void
+    {
+        $last_request  = $api->getLastRequest();
+        $last_response = $api->getLastResponse();
+
+        $this->log(
+            $last_request->getCommand(),
+            json_encode($last_request->getArgs()),
+            'input',
+            true
+        );
+
+        $this->log(
+            $last_request->getCommand(),
+            json_encode($last_response->getData()),
+            'output',
+            $last_response->getCode() == 0
+        );
+    }
+
+    /**
+     * @param array $vars
+     * @param array $default_name_servers
+     *
+     * @return array structure [['name' => name_server],]
+     */
+    private function getNameServersFromVarsOrDefault(array $vars, array $default_name_servers = []): array
+    {
+        $name_servers = [];
+        for ($i = 1; $i < 6; $i++) {
+            if (isset($vars['ns' . $i]) && !empty($vars['ns' . $i])) {
+                $name_servers[] = [
+                    'name' => $vars['ns' . $i]
+                ];
+            }
+        }
+
+        if (empty($name_servers)) {
+            foreach ($default_name_servers as $ns) {
+                if (empty($ns)) {
+                    continue;
+                }
+                $name_servers[] = [
+                    'name' => $ns,
+                ];
+            }
+        }
+
+        return $name_servers;
+    }
+
+    /**
+     * @param array|null $vars
+     *
+     * @return array customer data formatted for Openprovider
+     *
+     * @throws Exception
+     */
+    private function getCustomerData(?array $vars = null): array
+    {
+        if (!isset($this->Clients)) {
+            Loader::loadModels($this, ['Clients']);
+        }
+        if (!isset($this->Contacts)) {
+            Loader::loadModels($this, ['Contacts']);
+        }
+
+        Loader::load(__DIR__ . DS . 'helpers' . DS . 'address_splitter.php');
+        Loader::load(__DIR__ . DS . 'helpers' . DS . 'phone_analyzer.php');
+
+        $client = $this->Clients->get($vars['client_id']);
+
+        // We cant create domain and contacts without client information
+        if (!$client) {
+            throw new Exception(Language::_('OpenProvider.!error.client.not_exist', true));
+        }
+
+        // taking phone number
+        $contact_numbers = $this->Contacts->getNumbers($client->contact_id);
+        $contact_number  = $contact_numbers[0]->number ?? null;
+
+        if (is_null($contact_number)) {
+            throw new Exception('OpenProvider.!error.client.phone_not_exist');
+        }
+
+        // processing phone to correct format
+        $contact_number = PhoneAnalyzer::makePhoneCorrectFormat($contact_number, $client->country);
+        if ($contact_number) {
+            $phone = PhoneAnalyzer::makePhoneArray($contact_number);
+        }
+
+        // processing address
+        try {
+            $contact_full_address     = $client->address1 . ' ' . $client->address2;
+            $contact_splitted_address = AddressSplitter::splitAddress($contact_full_address);
+            $contact_house_number     = $contact_splitted_address['houseNumberParts']['base'];
+            $contact_street           = $contact_splitted_address['streetName'] .
+                ' ' . $contact_splitted_address['additionToAddress2'];
+
+        } catch (Exception $e) {
+            $should_use_full_address =
+                strpos($e->getMessage(), ' could not be splitted into street name and house number.') !== false;
+
+            if (!$should_use_full_address) {
+                throw $e;
+            }
+
+            $contact_street = $contact_full_address;
+        }
+
+        // putting contact data together
+        $customer = [
+            'company_name' => $client->company,
+            'email'        => $client->email,
+            'vat'          => $client->settings['tax_id'],
+            'phone'        => $phone,
+            'name'         => [
+                'first_name' => $client->first_name,
+                'last_name'  => $client->last_name,
+                'initials'   => mb_substr($client->first_name, 0, 1) . '.' . mb_substr($client->last_name, 0, 1)
+            ],
+            'address'      => [
+                'city'    => $client->city,
+                'country' => $client->country,
+                'zipcode' => $client->zip,
+                'state'   => $client->state,
+                'street'  => $contact_street,
+                'number'  => $contact_house_number,
+            ],
+        ];
+
+        return $customer;
+    }
+
+    /**
+     * @param $vars
+     *
+     * @return array [ 'domain_additional_data', 'customer_extension_additional_data' ]
+     */
+    private function getAdditionalData($vars)
+    {
+        $domain_additional_data_keys             = array_keys(DomainAdditionalData::openAPITypes());
+        $customer_extension_additional_data_keys = array_keys(CustomerExtensionAdditionalData::openAPITypes());
+
+
+        $additionalData = [
+            'domain_additional_data'             => [],
+            'customer_extension_additional_data' => [],
+        ];
+
+        foreach ($vars as $key => $value) {
+            if (in_array($key, $domain_additional_data_keys)) {
+                $additionalData['domain_additional_data'][$key] = $value;
+            }
+
+            if (in_array($key, $customer_extension_additional_data_keys)) {
+                $additionalData['customer_extension_additional_data'][$key] = $value;
+            }
+        }
+
+        return $additionalData;
+    }
+
+    /**
+     * @param stdClass $package
+     * @param stdClass $service
+     * @param array $vars
+     * @param null $parent_package
+     * @param null $parent_service
+     *
+     * @return array|null contains an array of key=>value fields for each service field and its value,
+     * as well as whether the value should be encrypted.
+     *
+     * This method is very similar to addService().
+     *
+     * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-editService($package,$service,array$vars=array(),$parent_package=null,$parent_service=null)
+     */
+    public function editService(
+        $package,
+        $service,
+        array $vars = [],
+        $parent_package = null,
+        $parent_service = null
+    ): ?array
+    {
+        // TODO: Change the autogenerated stub
+        return parent::editService($package, $service, $vars, $parent_package, $parent_service);
+    }
+
+    /**
+     * @param stdClass $package
+     * @param null $vars
+     *
+     * @return ModuleFields contains fields displayed when a client goes to create a service.
+     *
+     * This method is very similar to getAdminAddFields().
+     *
+     * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-getClientAddFields($package,$vars=null)
+     */
+    public function getClientAddFields($package, $vars = null): ModuleFields
+    {
+        if ($package->meta->type != 'domain') {
+            return new ModuleFields();
+        }
+
+        // Handle universal domain name
+        if (isset($vars->domain)) {
+            $vars->domain = $vars->domain;
+
+            $splitted_domain_name = $this->splitDomainName($vars->domain);
+            $tld                  = $splitted_domain_name['extension'] ? '.' . $splitted_domain_name['extension'] : '';
+        }
+
+        // Set default name servers
+        if (!isset($vars->ns) && isset($package->meta->ns)) {
+            $i = 1;
+            foreach ($package->meta->ns as $ns) {
+                $vars->{'ns' . $i++} = $ns;
+            }
+        }
+
+        // Handle transfer request
+        $operation = self::RegisterOperation;
+        if ((isset($vars->transfer) && $vars->transfer) || isset($vars->auth)) {
+            $operation = self::TransferOperation;
+        }
+
+        $fields = [];
+        if ($operation == self::RegisterOperation) {
+            // Handle domain registration
+            $fields = array_merge(
+                Configure::get('OpenProvider.nameserver_fields'),
+                Configure::get('OpenProvider.domain_fields'),
+                (array)Configure::get('OpenProvider.domain_fields' . $tld)
+            );
+        } elseif ($operation == self::TransferOperation) {
+            $fields = array_merge(
+                Configure::get('OpenProvider.transfer_fields'),
+                (array)Configure::get('OpenProvider.domain_fields' . $tld)
+            );
+
+            // we already know we're doing a transfer, don't make it editable
+            $fields['transfer']['type']  = 'hidden';
+            $fields['transfer']['label'] = null;
+        }
+
+        // We should already have the domain name don't make editable
+        $fields['domain']['type']  = 'hidden';
+        $fields['domain']['label'] = null;
+
+        $module_fields = $this->arrayToModuleFields($fields, null, $vars);
+
+        if (
+            isset($fields['identification_type']) &&
+            isset($fields['passport_number']) &&
+            isset($fields['passport_series']) &&
+            isset($fields['company_registration_number'])
+        ) {
+            $module_fields->setHtml(
+                "
+                    <script type=\"text/javascript\">
+                        $(document).ready(function() {
+                            $('#company_registration_number_id').prop('disabled', true).val('');
+                            
+                            $('#identification_type_id').change(function () {
+                                if ($(this).val() == 'company_registration_number') {
+                                    $('#company_registration_number_id').prop('disabled', false);
+                                    $('#passport_number_id').prop('disabled', true).val('');
+                                    $('#passport_series_id').prop('disabled', true).val('');
+                                } else {
+                                    $('#company_registration_number_id').prop('disabled', true).val('');
+                                    $('#passport_number_id').prop('disabled', false);
+                                    $('#passport_series_id').prop('disabled', false);
+                                }
+                            });
+                        });
+                    </script>
+                "
+            );
+        }
+
+        // Determine whether this is an AJAX request
+        return (isset($module_fields) ? $module_fields : new ModuleFields());
+    }
+
+    /**
+     * @param string $domain
+     * @param null $module_row_id
+     *
+     * @return bool true if the domain is available or false otherwise.
+     *
+     * @throws Exception
+     *
+     * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-checkAvailability($domain,$module_row_id=null)
+     */
+    public function checkAvailability($domain, $module_row_id = null): bool
+    {
+        $row  = $this->getModuleRow($module_row_id);
+        $api  = $this->getApi($row->meta->username, $row->meta->password, $row->meta->test_mode == 'true');
+        $args = [
+            $this->splitDomainName($domain)
+        ];
+
+        $response = $api->call('checkDomainRequest', ['domains' => $args])->getData();
+
+        $this->logRequest($api);
+
+        return $response['results'][0]['status'] == 'free';
+    }
+
+    /**
+     * @param string $password
+     * @param string $username
+     * @param string $test_mode 'true'/'false'
+     *
+     * @return bool true if credentials are correct in OpenProvider
+     *
+     * @throws Exception
+     */
+    public function validateConnection($password, $username, $test_mode = null): bool
+    {
+        $api             = $this->getApi();
+        $database_helper = new DatabaseHelper($this->Record);
+
+        $api->getConfig()->setHost($test_mode == 'true' ? OpenProviderApi::API_CTE_URL : OpenProviderApi::API_URL);
+
+        $token = $api->call('generateAuthTokenRequest', ['username' => $username, 'password' => $password])
+                ->getData()['token'] ?? '';
+
+        $this->logRequest($api);
+
+        $is_token_exists = strlen($token) > 0;
+
+        if ($is_token_exists) {
+            $database_helper->setOpenproviderTokenToDatabase(
+                $this->generateUserHash($username, $password, $test_mode == 'true'),
+                $token,
+                date('Y-m-d H:i:s', strtotime(date('Y-m-d H:i:s') . ' +48 hours'))
+            );
+        }
+
+        return $is_token_exists;
+    }
+
+    /**
+     * @return mixed|null the OpenProvider first row
+     */
+    private function getRow()
+    {
+        $module_rows = $this->getRows();
+
+        return isset($module_rows[0]) ? $module_rows[0] : null;
+    }
+
+    /**
+     * @return array the OpenProvider module rows
+     */
+    private function getRows(): array
+    {
+        Loader::loadModels($this, ['ModuleManager']);
+
+        $module_rows = [];
+        $modules     = $this->ModuleManager->getInstalled();
+
+        foreach ($modules as $module) {
+            $module_data = $this->ModuleManager->get($module->id);
+
+            foreach ($module_data->rows as $module_row) {
+                if (isset($module_row->meta->openprovider_module)) {
+                    $module_rows[] = $module_row;
+                }
+            }
+        }
+
+        return $module_rows;
     }
 
     /**
