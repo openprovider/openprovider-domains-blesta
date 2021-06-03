@@ -407,7 +407,7 @@ class Openprovider extends Module
      * @param null $parent_package
      * @param null $parent_service
      * @param string $status The status of the service being added. Possible values:
-     * 
+     *
      *  - active
      *
      *  - canceled
@@ -449,98 +449,7 @@ class Openprovider extends Module
 
         // if method use module
         if ($use_module) {
-            $api = $this->getApi($row->meta->username, $row->meta->password, $row->meta->test_mode == 'true');
-
-            $database_helper = new DatabaseHelper($this->Record);
-
-            if ($package->meta->type == 'domain') {
-                $vars['years'] = 1;
-
-                foreach ($package->pricing as $pricing) {
-                    if ($pricing->id == $vars['pricing_id']) {
-                        $vars['years'] = $pricing->term;
-                        break;
-                    }
-                }
-            }
-            // generating name_servers array: ['name' => name_server]
-            $name_servers = [];
-            for ($i = 1; $i < 6; $i++) {
-                if (isset($vars['ns'.$i]) && !empty($vars['ns'.$i])) {
-                    $name_servers[] = [
-                        'name' => $vars['ns'.$i]
-                    ];
-                }
-            }
-
-            if (empty($name_servers)) {
-                foreach($package->meta->ns as $ns) {
-                    if (empty($ns)) {
-                        continue;
-                    }
-                    $name_servers[] = [
-                        'name' => $ns,
-                    ];
-                }
-            }
-
-            $customer = $this->getCustomerData($vars);
-
-            $additional_data = $this->getAdditionalData($vars);
-
-            if (!empty($additional_data['customer_extension_additional_data'])) {
-                $customer['extension_additional_data'] = [
-                    [
-                        'name' => $splitted_domain_name['extension'],
-                        'data' => $additional_data['customer_extension_additional_data'],
-                    ]
-                ];
-            }
-
-            // Creating contacts and saving handles to database
-            $handles = [];
-            $handle = $api->call('createCustomerRequest', $customer);
-            $this->logRequest($api);
-
-            if (!isset($handle->getData()['handle'])) {
-                throw new Exception($handle->getMessage(), $handle->getCode());
-            }
-
-            $handles['all'] = $handle;
-
-            $database_helper->setServiceHandles($vars['service_id'], $handles);
-
-            $domain = [
-                'admin_handle'   => $handle,
-                'billing_handle' => $handle,
-                'owner_handle'   => $handle,
-                'tech_handle'    => $handle,
-                'domain'         => $splitted_domain_name,
-                'period'         => $vars['years'],
-                'name_servers'   => $name_servers,
-                'autorenew'      => 'off',
-            ];
-
-            if (!empty($additional_data['domain_additional_data'])) {
-                $domain['additional_data'] = $additional_data['domain_additional_data'];
-            }
-
-            if (isset($vars['auth']) && !empty($vars['auth'])) {
-                $domain['auth_code'] = $vars['auth'];
-                $domain_response = $api->call('transferDomainRequest', $domain);
-            } else {
-                $domain_response = $api->call('createDomainRequest', $domain);
-            }
-
-            $this->logRequest($api);
-
-            // if creation domain failed we need to delete customers for it
-            if ($domain_response->getCode() != 0 || !isset($domain_response->getData()['id'])) {
-                foreach ($handles as $handle) {
-                    $api->call('deleteCustomerRequest', ['handle' => $handle]);
-                    $this->logRequest($api);
-                }
-            }
+            $this->createDomainInOp($row, $vars, $package);
         }
 
         $meta = [];
@@ -930,12 +839,12 @@ class Openprovider extends Module
     /**
      * @param array|null $vars
      *
-     * @return array customer data formatted for openprovider
+     * @return array customer data formatted for Openprovider
+     *
+     * @throws Exception
      */
-    private function getCustomerData(?array $vars = null)
+    private function getCustomerData(?array $vars = null): array
     {
-        $customer = [];
-
         if (!isset($this->Clients)) {
             Loader::loadModels($this, ['Clients']);
         }
@@ -1022,6 +931,125 @@ class Openprovider extends Module
         }
 
         return $service_data;
+    }
+
+    /**
+     * @param array $vars
+     * @param array $default_name_servers
+     *
+     * @return array structure [['name' => name_server],]
+     */
+    private function getNameServersFromVarsOrDefault(array $vars, array $default_name_servers = []): array
+    {
+        $name_servers = [];
+        for ($i = 1; $i < 6; $i++) {
+            if (isset($vars['ns'.$i]) && !empty($vars['ns'.$i])) {
+                $name_servers[] = [
+                    'name' => $vars['ns'.$i]
+                ];
+            }
+        }
+
+        if (empty($name_servers)) {
+            foreach($default_name_servers as $ns) {
+                if (empty($ns)) {
+                    continue;
+                }
+                $name_servers[] = [
+                    'name' => $ns,
+                ];
+            }
+        }
+
+        return $name_servers;
+    }
+
+    /**
+     * @param $row
+     * @param $vars
+     * @param $package
+     *
+     * @throws \Symfony\Component\Serializer\Exception\ExceptionInterface
+     *
+     */
+    private function createDomainInOp($row, $vars, $package)
+    {
+        $splitted_domain_name = $this->splitDomainName($vars['domain']);
+
+        $api = $this->getApi($row->meta->username, $row->meta->password, $row->meta->test_mode == 'true');
+
+        $database_helper = new DatabaseHelper($this->Record);
+
+        if ($package->meta->type == 'domain') {
+            $vars['years'] = 1;
+
+            foreach ($package->pricing as $pricing) {
+                if ($pricing->id == $vars['pricing_id']) {
+                    $vars['years'] = $pricing->term;
+                    break;
+                }
+            }
+        }
+
+        $name_servers = $this->getNameServersFromVarsOrDefault($vars, $package->meta->ns);
+
+        $customer = $this->getCustomerData($vars);
+
+        $additional_data = $this->getAdditionalData($vars);
+
+        if (!empty($additional_data['customer_extension_additional_data'])) {
+            $customer['extension_additional_data'] = [
+                [
+                    'name' => $splitted_domain_name['extension'],
+                    'data' => $additional_data['customer_extension_additional_data'],
+                ]
+            ];
+        }
+
+        // Creating contacts and saving handles to database
+        $handles = [];
+        $handle = $api->call('createCustomerRequest', $customer);
+        $this->logRequest($api);
+
+        if (!isset($handle->getData()['handle'])) {
+            throw new Exception($handle->getMessage(), $handle->getCode());
+        }
+
+        $handles['all'] = $handle;
+
+        $database_helper->setServiceHandles($vars['service_id'], $handles);
+
+        $domain = [
+            'admin_handle'   => $handle,
+            'billing_handle' => $handle,
+            'owner_handle'   => $handle,
+            'tech_handle'    => $handle,
+            'domain'         => $splitted_domain_name,
+            'period'         => $vars['years'],
+            'name_servers'   => $name_servers,
+            'autorenew'      => 'off',
+        ];
+
+        if (!empty($additional_data['domain_additional_data'])) {
+            $domain['additional_data'] = $additional_data['domain_additional_data'];
+        }
+
+        if (isset($vars['auth']) && !empty($vars['auth'])) {
+            $domain['auth_code'] = $vars['auth'];
+            $domain_response = $api->call('transferDomainRequest', $domain);
+        } else {
+            $domain_response = $api->call('createDomainRequest', $domain);
+        }
+
+        $this->logRequest($api);
+
+        // if creation domain failed we need to delete customers for it
+        if ($domain_response->getCode() != 0 || !isset($domain_response->getData()['id'])) {
+            foreach ($handles as $handle) {
+                $api->call('deleteCustomerRequest', ['handle' => $handle]);
+                $this->logRequest($api);
+            }
+        }
     }
 
     /**
