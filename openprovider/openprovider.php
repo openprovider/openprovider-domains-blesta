@@ -606,12 +606,14 @@ class Openprovider extends Module
 
         // Creating contacts and saving handles to database
         $handles = [];
-        $handle  = $api->call('createCustomerRequest', $customer);
+        $create_customer_response  = $api->call('createCustomerRequest', $customer);
         $this->logRequest($api);
 
-        if (!isset($handle->getData()['handle'])) {
-            throw new Exception($handle->getMessage(), $handle->getCode());
+        if (!isset($create_customer_response->getData()['handle'])) {
+            throw new Exception($create_customer_response->getMessage(), $create_customer_response->getCode());
         }
+
+        $handle = $create_customer_response->getData()['handle'];
 
         $handles['all'] = $handle;
 
