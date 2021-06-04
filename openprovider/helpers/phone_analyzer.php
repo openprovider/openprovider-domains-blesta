@@ -27,7 +27,7 @@ class PhoneAnalyzer
     }
 
     /**
-     * Make array with partials of phone number. phone number should be +NNN.NNNNNNNNNN format
+     * Make array with partials of phone number. Phone number should be +NNN.NNNNNNNNNN format
      *
      * @param $phone
      *
@@ -35,7 +35,7 @@ class PhoneAnalyzer
      */
     public static function makePhoneArray($phone): array
     {
-        $pos            = strpos($phone, '.');
+        $pos              = strpos($phone, '.');
         $area_code_length = 3;
 
         $country_code      = substr($phone, 0, $pos);

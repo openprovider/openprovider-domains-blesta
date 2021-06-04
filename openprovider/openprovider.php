@@ -8,13 +8,13 @@ class Openprovider extends Module
     /**
      * @const string
      */
-    private const ModuleName = 'openprovider';
+    private const MODULE_NAME = 'openprovider';
 
     /**
      * @const string
      */
-    private const TransferOperation = 'transfer';
-    private const RegisterOperation = 'register';
+    private const TRANSFER_OPERATION = 'transfer';
+    private const REGISTER_OPERATION = 'register';
 
 
     /**
@@ -31,7 +31,7 @@ class Openprovider extends Module
         $this->loadConfig(__DIR__ . DS . 'config.json');
 
         // Loading language
-        Language::loadLang(self::ModuleName, null, dirname(__FILE__) . DS . 'language' . DS);
+        Language::loadLang(self::MODULE_NAME, null, dirname(__FILE__) . DS . 'language' . DS);
 
         Loader::load(__DIR__ . DS . 'vendor' . DS . 'autoload.php');
         Loader::loadComponents($this, ['Input', 'Record']);
@@ -41,12 +41,12 @@ class Openprovider extends Module
 
         Configure::load('openprovider', __DIR__ . DS . 'config' . DS);
 
-        $this->default_module_view_path = 'components' . DS . 'modules' . DS . self::ModuleName . DS;
+        $this->default_module_view_path = 'components' . DS . 'modules' . DS . self::MODULE_NAME . DS;
 
         if (is_null($this->getModule())) {
             $modules = $this->ModuleManager->getInstalled();
             foreach ($modules as $module) {
-                if (strtolower($module->name) == self::ModuleName) {
+                if (strtolower($module->name) == self::MODULE_NAME) {
                     $this->setModule($module);
                     break;
                 }
@@ -606,7 +606,7 @@ class Openprovider extends Module
 
         // Creating contacts and saving handles to database
         $handles = [];
-        $create_customer_response  = $api->call('createCustomerRequest', $customer);
+        $create_customer_response = $api->call('createCustomerRequest', $customer);
         $this->logRequest($api);
 
         if (!isset($create_customer_response->getData()['handle'])) {
@@ -947,20 +947,22 @@ class Openprovider extends Module
         }
 
         // Handle transfer request
-        $operation = self::RegisterOperation;
+        $operation = self::REGISTER_OPERATION;
         if ((isset($vars->transfer) && $vars->transfer) || isset($vars->auth)) {
-            $operation = self::TransferOperation;
+            $operation = self::TRANSFER_OPERATION;
         }
 
         $fields = [];
-        if ($operation == self::RegisterOperation) {
+        if ($operation == self::REGISTER_OPERATION) {
             // Handle domain registration
             $fields = array_merge(
                 Configure::get('OpenProvider.nameserver_fields'),
                 Configure::get('OpenProvider.domain_fields'),
                 (array)Configure::get('OpenProvider.domain_fields' . $tld)
             );
-        } elseif ($operation == self::TransferOperation) {
+        }
+
+        if ($operation == self::TRANSFER_OPERATION) {
             $fields = array_merge(
                 Configure::get('OpenProvider.transfer_fields'),
                 (array)Configure::get('OpenProvider.domain_fields' . $tld)
