@@ -27,6 +27,10 @@ class ComposerStaticInitbb78101007aa723db1c78eebea561267
         array (
             'phpDocumentor\\Reflection\\' => 25,
         ),
+        'l' => 
+        array (
+            'libphonenumber\\' => 15,
+        ),
         'W' => 
         array (
             'Webmozart\\Assert\\' => 17,
@@ -69,6 +73,7 @@ class ComposerStaticInitbb78101007aa723db1c78eebea561267
             'GuzzleHttp\\Psr7\\' => 16,
             'GuzzleHttp\\Promise\\' => 19,
             'GuzzleHttp\\' => 11,
+            'Giggsey\\Locale\\' => 15,
         ),
         'C' => 
         array (
@@ -76,6 +81,7 @@ class ComposerStaticInitbb78101007aa723db1c78eebea561267
         ),
         'B' => 
         array (
+            'Brick\\PhoneNumber\\' => 18,
             'Blesta\\Composer\\Installer\\' => 26,
         ),
     );
@@ -86,6 +92,10 @@ class ComposerStaticInitbb78101007aa723db1c78eebea561267
             0 => __DIR__ . '/..' . '/phpdocumentor/reflection-common/src',
             1 => __DIR__ . '/..' . '/phpdocumentor/reflection-docblock/src',
             2 => __DIR__ . '/..' . '/phpdocumentor/type-resolver/src',
+        ),
+        'libphonenumber\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/giggsey/libphonenumber-for-php/src',
         ),
         'Webmozart\\Assert\\' => 
         array (
@@ -199,9 +209,17 @@ class ComposerStaticInitbb78101007aa723db1c78eebea561267
         array (
             0 => __DIR__ . '/..' . '/guzzlehttp/guzzle/src',
         ),
+        'Giggsey\\Locale\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/giggsey/locale/src',
+        ),
         'Composer\\Installers\\' => 
         array (
             0 => __DIR__ . '/..' . '/composer/installers/src/Composer/Installers',
+        ),
+        'Brick\\PhoneNumber\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/brick/phonenumber/src',
         ),
         'Blesta\\Composer\\Installer\\' => 
         array (

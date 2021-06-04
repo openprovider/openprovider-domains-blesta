@@ -6,7 +6,7 @@
     'aliases' => 
     array (
     ),
-    'reference' => '5a107fc968b7fe27cd87d8afc9db2af82ddd7007',
+    'reference' => 'ea87482cea07b1f73f0c5ff71d7ee4b32535463c',
     'name' => 'openprovider/openprovider-domains-blesta',
   ),
   'versions' => 
@@ -20,6 +20,15 @@
       ),
       'reference' => 'f0529f892e4cb0db5e9e949031965f212c7da269',
     ),
+    'brick/phonenumber' => 
+    array (
+      'pretty_version' => '0.2.2',
+      'version' => '0.2.2.0',
+      'aliases' => 
+      array (
+      ),
+      'reference' => '8bce37b0a4e569bae773fc2a254892acd0eb05d1',
+    ),
     'composer/installers' => 
     array (
       'pretty_version' => 'v1.11.0',
@@ -28,6 +37,24 @@
       array (
       ),
       'reference' => 'ae03311f45dfe194412081526be2e003960df74b',
+    ),
+    'giggsey/libphonenumber-for-php' => 
+    array (
+      'pretty_version' => '8.12.23',
+      'version' => '8.12.23.0',
+      'aliases' => 
+      array (
+      ),
+      'reference' => 'a6ff019e6d6f25f39c0797e678b342547045fb20',
+    ),
+    'giggsey/locale' => 
+    array (
+      'pretty_version' => '1.9',
+      'version' => '1.9.0.0',
+      'aliases' => 
+      array (
+      ),
+      'reference' => 'b07f1eace8072ccc61445ad8fbd493ff9d783043',
     ),
     'guzzlehttp/guzzle' => 
     array (
@@ -63,7 +90,7 @@
       'aliases' => 
       array (
       ),
-      'reference' => '5a107fc968b7fe27cd87d8afc9db2af82ddd7007',
+      'reference' => 'ea87482cea07b1f73f0c5ff71d7ee4b32535463c',
     ),
     'openprovider/rest-client-php' => 
     array (
@@ -72,7 +99,7 @@
       'aliases' => 
       array (
       ),
-      'reference' => '5f5391452ebcd71936d7357f12da995f2906e750',
+      'reference' => '250fa1ca3e98a6a7ea26331eef31273d488041bb',
     ),
     'phpdocumentor/reflection-common' => 
     array (
@@ -232,12 +259,12 @@
     ),
     'symfony/serializer' => 
     array (
-      'pretty_version' => 'v5.2.7',
-      'version' => '5.2.7.0',
+      'pretty_version' => 'v5.2.9',
+      'version' => '5.2.9.0',
       'aliases' => 
       array (
       ),
-      'reference' => '3698d2611c4917d3689ff89c0a0dcaa761c8e771',
+      'reference' => 'b072c8faa82c641da6cc32c33f8caa7c7c4567a2',
     ),
     'symfony/string' => 
     array (
