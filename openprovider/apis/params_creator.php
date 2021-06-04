@@ -4,16 +4,18 @@ use phpDocumentor\Reflection\DocBlockFactory;
 
 class ParamsCreator
 {
-    const NO_CLASS = "no class";
+    const NO_CLASS = 'no class';
 
     /**
      * @param array $args
      * @param mixed $client
      * @param string $method
+     *
      * @return array
+     *
      * @throws \ReflectionException
      */
-    public function createParameters(array $args, $client, string $method)
+    public function createParameters(array $args, $client, string $method): array
     {
         $reflection = new \ReflectionMethod($client, $method);
         $namesOfArgs = array_column($reflection->getParameters(), 'name');
@@ -27,10 +29,12 @@ class ParamsCreator
      * @param array $args
      * @param mixed $client
      * @param string $method
+     *
      * @return array
+     *
      * @throws \ReflectionException
      */
-    private function createParametersGetDelete(array $args, $client, string $method)
+    private function createParametersGetDelete(array $args, $client, string $method): array
     {
         $haveAnyOrderBy = !empty($args['orderBy']);
         $reflectionMethod = new \ReflectionMethod($client, $method);
@@ -63,10 +67,12 @@ class ParamsCreator
      * @param array $args
      * @param mixed $client
      * @param string $method
+     *
      * @return array
+     *
      * @throws \ReflectionException
      */
-    private function createParametersPostPut(array $args, object $client, string $method)
+    private function createParametersPostPut(array $args, object $client, string $method): array
     {
         $classNameOfBody = $this->parseClassNameOfBody($client, $method);
 
@@ -92,11 +98,13 @@ class ParamsCreator
     /**
      * @param object $client
      * @param string $method
+     *
      * @return string
+     *
      * @throws \ReflectionException
      * @throws \Exception
      */
-    private function parseClassNameOfBody(object $client, string $method)
+    private function parseClassNameOfBody(object $client, string $method): string
     {
         try {
             $reflector = new \ReflectionClass($client);
@@ -129,10 +137,12 @@ class ParamsCreator
      * @param object $class
      * @param string $method
      * @param object $body
+     *
      * @return array
+     *
      * @throws \ReflectionException
      */
-    private function argsCollect(object $class, string $method, object $body)
+    private function argsCollect(object $class, string $method, object $body): array
     {
         $reflection = new \ReflectionMethod($class, $method);
         $methodArgsNames = array_column($reflection->getParameters(), 'name');
@@ -152,9 +162,10 @@ class ParamsCreator
 
     /**
      * @param \ReflectionMethod $method
+     *
      * @return array
      */
-    private function getMethodParamsTypes(\ReflectionMethod $method)
+    private function getMethodParamsTypes(\ReflectionMethod $method): array
     {
         $factory  = DocBlockFactory::createInstance();
         $docblock = $factory->create($method->getDocComment());

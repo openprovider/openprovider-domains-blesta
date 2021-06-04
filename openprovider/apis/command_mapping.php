@@ -36,6 +36,10 @@ class CommandMapping
             self::COMMAND_MAP_METHOD => 'updateCustomer',
             self::COMMAND_MAP_CLASS => CustomerApi::class,
         ],
+        'deleteCustomerRequest' => [
+            self::COMMAND_MAP_METHOD => 'deleteCustomer',
+            self::COMMAND_MAP_CLASS => CustomerApi::class
+        ],
         'searchEmailVerificationDomainRequest' => [
             self::COMMAND_MAP_METHOD => 'listDomainEmailVerifications',
             self::COMMAND_MAP_CLASS => EmailVerificationApi::class,

@@ -624,5 +624,3 @@ class CustomerCreateCustomerRequest implements ModelInterface, ArrayAccess
         );
     }
 }
-
-

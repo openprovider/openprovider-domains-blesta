@@ -1,12 +1,14 @@
 <?php
 
 require_once __DIR__ . DS . 'response.php';
+require_once __DIR__ . DS . 'last_request.php';
 require_once __DIR__ . DS . 'command_mapping.php';
 require_once __DIR__ . DS . 'api_configuration.php';
 require_once __DIR__ . DS . 'params_creator.php';
 
 use Openprovider\Api\Rest\Client\Base\Configuration;
 use GuzzleHttp\Client as HttpClient;
+use Symfony\Component\Serializer\NameConverter\CamelCaseToSnakeCaseNameConverter;
 use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
 use Symfony\Component\Serializer\Serializer;
 
@@ -16,28 +18,21 @@ class OpenProviderApi
     const API_URL = 'https://api.openprovider.eu';
     const API_CTE_URL = 'https://api.cte.openprovider.eu';
 
-    /**
-     * @var Configuration
-     */
-    private $configuration;
-    /**
-     * @var HttpClient
-     */
-    private $http_client;
-    /**
-     * @var CommandMapping
-     */
-    private $command_mapping;
-    /**
-     * @var ApiConfig
-     */
-    private $api_config;
-    /**
-     * @var ParamsCreator
-     */
-    private $params_creator;
+    private Configuration $configuration;
 
-    private $serializer;
+    private HttpClient $http_client;
+
+    private CommandMapping $command_mapping;
+
+    private ApiConfig $api_config;
+
+    private ParamsCreator $params_creator;
+
+    private Serializer $serializer;
+
+    private Response $last_response;
+
+    private LastRequest $last_request;
 
     public function __construct()
     {
@@ -45,8 +40,7 @@ class OpenProviderApi
         $this->command_mapping = new CommandMapping();
         $this->api_config = new ApiConfig();
         $this->params_creator = new ParamsCreator();
-        $this->serializer = new Serializer([new ObjectNormalizer()]);
-
+        $this->serializer = new Serializer([new ObjectNormalizer(null, new CamelCaseToSnakeCaseNameConverter())]);
         $this->http_client = new HttpClient([
             'headers' => [
                 'X-Client' => self::API_CLIENT_NAME
@@ -54,7 +48,15 @@ class OpenProviderApi
         ]);
     }
 
-    public function call(string $cmd, array $args = [])
+    /**
+     * @param string $cmd
+     * @param array $args
+     *
+     * @return Response
+     *
+     * @throws \Symfony\Component\Serializer\Exception\ExceptionInterface
+     */
+    public function call(string $cmd, array $args = []): Response
     {
         $response = new Response();
 
@@ -73,6 +75,10 @@ class OpenProviderApi
             $service->getConfig()->setAccessToken($this->api_config->getToken());
         }
 
+        $this->last_request = new LastRequest();
+        $this->last_request->setArgs($args);
+        $this->last_request->setCommand($cmd);
+
         try {
             $requestParameters = $this->params_creator->createParameters($args, $service, $apiMethod);
             $reply = $service->$apiMethod(...$requestParameters);
@@ -81,19 +87,28 @@ class OpenProviderApi
                     json_decode(substr($e->getMessage(), strpos($e->getMessage(), 'response:') + strlen('response:')))
                 ) ?? $e->getMessage();
 
-            return $this->failedResponse(
+            $return = $this->failedResponse(
                 $response,
                 $responseData['desc'] ?? $e->getMessage(),
                 $responseData['code'] ?? $e->getCode()
             );
+            $this->last_response = $return;
+
+            return $return;
         }
 
         $data = $this->serializer->normalize($reply->getData());
 
-        return $this->successResponse($response, $data);
+        $return = $this->successResponse($response, $data);
+        $this->last_response = $return;
+
+        return $return;
     }
 
-    public function getConfig()
+    /**
+     * @return ApiConfig
+     */
+    public function getConfig(): ApiConfig
     {
         return $this->api_config;
     }
@@ -101,9 +116,10 @@ class OpenProviderApi
     /**
      * @param Response $response
      * @param array $data
+     *
      * @return Response
      */
-    private function successResponse(Response $response, array $data)
+    private function successResponse(Response $response, array $data): Response
     {
         $response->setTotal($data['total'] ?? 0);
         unset($data['total']);
@@ -120,13 +136,30 @@ class OpenProviderApi
      * @param Response $response
      * @param string $message
      * @param int $code
+     *
      * @return Response
      */
-    private function failedResponse(Response $response, string $message, int $code)
+    private function failedResponse(Response $response, string $message, int $code): Response
     {
         $response->setMessage($message);
         $response->setCode($code);
 
         return $response;
+    }
+
+    /**
+     * @return LastRequest
+     */
+    public function getLastRequest(): LastRequest
+    {
+        return $this->last_request;
+    }
+
+    /**
+     * @return Response
+     */
+    public function getLastResponse(): Response
+    {
+        return $this->last_response;
     }
 }
