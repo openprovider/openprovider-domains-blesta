@@ -172,6 +172,12 @@ class DatabaseHelper
             ->delete();
     }
 
+    /**
+     * Load mapping data to openprovider_mapping_service_domain table
+     *
+     * @param int $service_id
+     * @param int $domain_id
+     */
     public function setMappingServiceDomain($service_id, $domain_id): void
     {
         $this->record
@@ -184,7 +190,7 @@ class DatabaseHelper
     /**
      * Delete service domain mapping by blesta's service id
      *
-     * @param $service_id
+     * @param int $service_id
      */
     public function deleteMappingServiceDomainByServiceId($service_id): void
     {
@@ -197,7 +203,7 @@ class DatabaseHelper
     /**
      * Delete service domain mapping by openprovider's domain id
      *
-     * @param $domain_id
+     * @param int $domain_id
      */
     public function deleteMappingServiceDomainByDomainId($domain_id): void
     {
@@ -208,8 +214,8 @@ class DatabaseHelper
     }
 
     /**
-     * @param $service_id
-     * @return stdClass database row with mapping service domain info {service_id, domain_id}
+     * @param int $service_id
+     * @return stdClass {id, service_id, domain_id} database row with mapping service domain info {service_id, domain_id}
      */
     public function getMappingServiceDomainByServiceId($service_id): stdClass
     {
