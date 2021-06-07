@@ -28,3 +28,11 @@ CREATE TABLE `openprovider_handles` (
 ```
 
 ### openprovider_mapping_service_domain
+```
+CREATE TABLE `openprovider_mapping_service_domain` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `service_id` int(10) unsigned NOT NULL,
+  `domain_id` int(10) unsigned NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci
+```
