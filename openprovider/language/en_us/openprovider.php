@@ -63,6 +63,10 @@ $lang['OpenProvider.domain.identification_type.company_registration_number'] = '
 $lang['OpenProvider.transfer.domain']  = 'Domain Name';
 $lang['OpenProvider.transfer.EPPCode'] = 'EPP Code';
 
+$lang['OpenProvider.tab_nameservers.title'] = 'Nameservers';
+$lang['OpenProvider.tab_nameserver.field_ns'] = 'Name Server %1$s'; // %1$s is the name server number
+$lang['OpenProvider.tab_nameservers.field_submit'] = 'Update Name Servers';
+
 // Errors add/update row
 $lang['OpenProvider.!error.username.empty']            = 'Username field shouldn\'t be empty!';
 $lang['OpenProvider.!error.password.empty']            = 'Password field shouldn\'t be empty!';

@@ -12,6 +12,11 @@ class DatabaseHelper
      */
     private const openproviderHandlesTable = 'openprovider_handles';
 
+    /**
+     * @const string
+     */
+    private const openproviderServiceIdDomainIdTable = 'openprovider_mapping_service_domain';
+
     private Minphp\Record\Record $record;
 
     /**
@@ -24,7 +29,7 @@ class DatabaseHelper
     }
 
     /**
-     * Method to create openprovider_token table
+     * Method to create openprovider_token table if not exist
      */
     public function createOpenproviderTokenTable(): void
     {
@@ -35,19 +40,19 @@ class DatabaseHelper
             ->setField('until_date', ['type' => 'datetime', 'is_null' => true, 'default' => null])
             ->setKey(['id'], 'primary')
             ->setKey(['user_hash'], 'unique')
-            ->create(self::openproviderTokenTable);
+            ->create(self::openproviderTokenTable, true);
     }
 
     /**
-     * Method to drop openprovider_token table
+     * Method to drop openprovider_token table if exist
      */
     public function deleteOpenproviderTokenTable(): void
     {
-        $this->record->drop(self::openproviderTokenTable);
+        $this->record->drop(self::openproviderTokenTable, true);
     }
 
     /**
-     * Method to create openprovider_token table
+     * Method to create openprovider_token table if not exist
      */
     public function createOpenproviderHandlesTable(): void
     {
@@ -61,11 +66,34 @@ class DatabaseHelper
     }
 
     /**
-     * Method to drop openprovider_token table
+     * Method to drop openprovider_token table if exist
      */
     public function deleteOpenproviderHandlesTable(): void
     {
         $this->record->drop(self::openproviderHandlesTable, true);
+    }
+
+    /**
+     * Method to create openprovider_service_id_domain_id table for mapping services with domains from openprovider
+     * if not exist
+     */
+    public function createOpenproviderServiceIdDomainIdTable(): void
+    {
+        $this->record
+            ->setField('id', ['type' => 'int', 'size' => 10, 'unsigned' => true, 'auto_increment' => true])
+            ->setField('service_id', ['type' => 'int', 'size' => 10, 'unsigned' => true])
+            ->setField('domain_id', ['type' => 'int', 'size' => 10, 'unsigned' => true])
+            ->setKey(['id'], 'primary')
+            ->create(self::openproviderServiceIdDomainIdTable, true);
+    }
+
+    /**
+     * Method to drop openprovider_service_id_domain_id table for mapping services with domains from openprovider
+     * if exist
+     */
+    public function deleteOpenproviderServiceIdDomainIdTable(): void
+    {
+        $this->record->drop(self::openproviderServiceIdDomainIdTable, true);
     }
 
     /**
@@ -122,7 +150,10 @@ class DatabaseHelper
     {
         foreach ($handles as $handle_type => $handle) {
             $this->record
-                ->insert(self::openproviderHandlesTable, ['type' => $handle_type, 'handle' => $handle, 'service_id' => $service_id]);
+                ->insert(
+                    self::openproviderHandlesTable,
+                    ['type' => $handle_type, 'handle' => $handle, 'service_id' => $service_id]
+                );
         }
     }
 
@@ -139,5 +170,53 @@ class DatabaseHelper
             ->where('service_id', '=', $service_id)
             ->where('handle', '=', $handle)
             ->delete();
+    }
+
+    public function setMappingServiceDomain($service_id, $domain_id): void
+    {
+        $this->record
+            ->insert(
+                self::openproviderServiceIdDomainIdTable,
+                ['service_id' => $service_id, 'domain_id' => $domain_id]
+            );
+    }
+
+    /**
+     * Delete service domain mapping by blesta's service id
+     *
+     * @param $service_id
+     */
+    public function deleteMappingServiceDomainByServiceId($service_id): void
+    {
+        $this->record
+            ->from(self::openproviderServiceIdDomainIdTable)
+            ->where('service_id', '=', $service_id)
+            ->delete();
+    }
+
+    /**
+     * Delete service domain mapping by openprovider's domain id
+     *
+     * @param $domain_id
+     */
+    public function deleteMappingServiceDomainByDomainId($domain_id): void
+    {
+        $this->record
+            ->from(self::openproviderServiceIdDomainIdTable)
+            ->where('domain_id', '=', $domain_id)
+            ->delete();
+    }
+
+    /**
+     * @param $service_id
+     * @return stdClass database row with mapping service domain info {service_id, domain_id}
+     */
+    public function getMappingServiceDomainByServiceId($service_id): stdClass
+    {
+        return $this->record
+            ->from(self::openproviderServiceIdDomainIdTable)
+            ->select()
+            ->where('service_id', '=', $service_id)
+            ->fetch();
     }
 }
