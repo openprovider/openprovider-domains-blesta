@@ -1,5 +1,11 @@
 <?php
 
+// Allowed tlds
+Configure::set('OpenProvider.tlds', [
+    '.com',
+    '.nl',
+]);
+
 // Domain fields
 Configure::set('OpenProvider.domain_fields', [
     'domain' => [

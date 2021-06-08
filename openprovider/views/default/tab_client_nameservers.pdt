@@ -20,3 +20,13 @@
 </button>
 
 <?php $this->Form->end(); ?>
+
+<?php
+    if (isset($vars->error) && $vars->error) {
+        echo "
+            <script>
+                $('.alert.alert-success').toggleClass('alert-success alert-danger').text(`{$vars->error}`);
+            </script>
+        ";
+    }
+?>
