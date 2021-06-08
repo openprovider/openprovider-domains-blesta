@@ -76,3 +76,4 @@ $lang['OpenProvider.!error.client.phone_not_exist']    = 'Client`s phone number 
 $lang['OpenProvider.!error.epp.empty']                 = 'Domain transfers require an EPP code to be entered.';
 $lang['OpenProvider.!error.passport_number.empty']     = 'This tld require an passport number to be entered.';
 $lang['OpenProvider.!error.passport_series.empty']     = 'This tld require an passport series to be entered.';
+$lang['OpenProvider.!error.domain.not_exist']          = 'This domain not exist in Openprovider.';
