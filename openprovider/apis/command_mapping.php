@@ -58,6 +58,10 @@ class CommandMapping
             self::COMMAND_MAP_METHOD => 'listDomains',
             self::COMMAND_MAP_CLASS => DomainServiceApi::class,
         ],
+        'retrieveDomainRequest' => [
+            self::COMMAND_MAP_METHOD => 'getDomain',
+            self::COMMAND_MAP_CLASS => DomainServiceApi::class,
+        ],
         'modifyDomainRequest' => [
             self::COMMAND_MAP_METHOD => 'updateDomain',
             self::COMMAND_MAP_CLASS => DomainServiceApi::class,

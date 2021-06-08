@@ -23,6 +23,11 @@ class Openprovider extends Module
     private string $default_module_view_path;
 
     /**
+     * @var DatabaseHelper
+     */
+    private DatabaseHelper $database_helper;
+
+    /**
      * Openprovider constructor.
      */
     public function __construct()
@@ -42,6 +47,8 @@ class Openprovider extends Module
         Configure::load('openprovider', __DIR__ . DS . 'config' . DS);
 
         $this->default_module_view_path = 'components' . DS . 'modules' . DS . self::MODULE_NAME . DS;
+
+        $this->database_helper = new DatabaseHelper($this->Record);
 
         if (is_null($this->getModule())) {
             $modules = $this->ModuleManager->getInstalled();
@@ -63,9 +70,9 @@ class Openprovider extends Module
      */
     public function install(): ?array
     {
-        $database_helper = new DatabaseHelper($this->Record);
-        $database_helper->createOpenproviderTokenTable();
-        $database_helper->createOpenproviderHandlesTable();
+        $this->database_helper->createOpenproviderTokenTable();
+        $this->database_helper->createOpenproviderHandlesTable();
+        $this->database_helper->createOpenProviderServiceIdDomainIdTable();
     }
 
     /**
@@ -77,9 +84,9 @@ class Openprovider extends Module
      */
     public function uninstall($module_id, $last_instance): ?array
     {
-        $database_helper = new DatabaseHelper($this->Record);
-        $database_helper->deleteOpenproviderTokenTable();
-        $database_helper->deleteOpenproviderHandlesTable();
+        $this->database_helper->deleteOpenproviderTokenTable();
+        $this->database_helper->deleteOpenproviderHandlesTable();
+        $this->database_helper->deleteOpenProviderServiceIdDomainIdTable();
     }
 
     /**
@@ -208,6 +215,8 @@ class Openprovider extends Module
 
             return $meta;
         }
+
+        return [];
     }
 
     /**
@@ -377,10 +386,7 @@ class Openprovider extends Module
      */
     public function getTlds($module_row_id = null): array
     {
-        return [
-            '.com',
-            '.es'
-        ];
+        return Configure::get('OpenProvider.tlds');
     }
 
     /**
@@ -574,9 +580,10 @@ class Openprovider extends Module
     {
         $splitted_domain_name = $this->splitDomainName($vars['domain']);
 
-        $api = $this->getApi($row->meta->username, $row->meta->password, $row->meta->test_mode == 'true');
+        $this->database_helper->createOpenproviderHandlesTable();
+        $this->database_helper->createOpenproviderServiceIdDomainIdTable();
 
-        $database_helper = new DatabaseHelper($this->Record);
+        $api = $this->getApi($row->meta->username, $row->meta->password, $row->meta->test_mode == 'true');
 
         if ($package->meta->type == 'domain') {
             $vars['years'] = 1;
@@ -617,7 +624,7 @@ class Openprovider extends Module
 
         $handles['all'] = $handle;
 
-        $database_helper->setServiceHandles($vars['service_id'], $handles);
+        $this->database_helper->setServiceHandles($vars['service_id'], $handles);
 
         $domain = [
             'admin_handle'   => $handle,
@@ -650,7 +657,11 @@ class Openprovider extends Module
                 $api->call('deleteCustomerRequest', ['handle' => $handle]);
                 $this->logRequest($api);
             }
+
+            return;
         }
+
+        $this->database_helper->setMappingServiceDomain($vars['service_id'], $domain_response->getData()['id']);
     }
 
     /**
@@ -668,8 +679,9 @@ class Openprovider extends Module
      */
     private function getApi($username = null, $password = null, $test_mode = true): OpenProviderApi
     {
-        $api             = new OpenProviderApi();
-        $database_helper = new DatabaseHelper($this->Record);
+        $api = new OpenProviderApi();
+
+        $this->database_helper->createOpenproviderTokenTable();
 
         $api->getConfig()->setHost($test_mode ? OpenProviderApi::API_CTE_URL : OpenProviderApi::API_URL);
 
@@ -679,7 +691,7 @@ class Openprovider extends Module
 
         $user_hash = $this->generateUserHash($username, $password, $test_mode);
 
-        $token = $database_helper->getOpenproviderTokenFromDatabase($user_hash);
+        $token = $this->database_helper->getOpenproviderTokenFromDatabase($user_hash);
 
         if ($token) {
             $api->getConfig()->setToken($token);
@@ -697,7 +709,7 @@ class Openprovider extends Module
 
         $token_until_date = date('Y-m-d H:i:s', strtotime(date('Y-m-d H:i:s') . ' +48 hours'));
 
-        $database_helper->setOpenproviderTokenToDatabase($user_hash, $token, $token_until_date);
+        $this->database_helper->setOpenproviderTokenToDatabase($user_hash, $token, $token_until_date);
 
         $api->getConfig()->setToken($token);
 
@@ -722,26 +734,38 @@ class Openprovider extends Module
 
     /**
      * @param OpenProviderApi $api
-     *
+     * @poram array $hidden_fields
      * @throws Exception
      */
-    private function logRequest(OpenProviderApi $api): void
+    private function logRequest(OpenProviderApi $api, array $hidden_fields = []): void
     {
+        $hidden_fields = array_merge($hidden_fields, ['password']);
         $last_request  = $api->getLastRequest();
         $last_response = $api->getLastResponse();
 
+        $request_args = $last_request->getArgs();
+
+        foreach ($request_args as $key => $value) {
+            if (in_array($key, $hidden_fields)) {
+                $request_args[$key] = '**********';
+            }
+        }
+
         $this->log(
             $last_request->getCommand(),
-            json_encode($last_request->getArgs()),
+            json_encode($request_args),
             'input',
             true
         );
 
+        $is_success = $last_response->getCode() == 0;
         $this->log(
             $last_request->getCommand(),
-            json_encode($last_response->getData()),
+            $is_success ?
+                json_encode($last_response->getData()) :
+                "{\"message\": \"{$last_response->getMessage()}\", \"code\": \"{$last_response->getCode()}\"}",
             'output',
-            $last_response->getCode() == 0
+            $is_success
         );
     }
 
@@ -837,22 +861,22 @@ class Openprovider extends Module
 
         // putting contact data together
         $customer = [
-            'company_name' => $client->company,
-            'email'        => $client->email,
-            'vat'          => $client->settings['tax_id'],
-            'phone'        => $phone,
+            'company_name' => $client->company ?? null,
+            'email'        => $client->email ?? null,
+            'vat'          => $client->settings['tax_id'] ?? null,
+            'phone'        => $phone ?? $contact_number,
             'name'         => [
-                'first_name' => $client->first_name,
-                'last_name'  => $client->last_name,
-                'initials'   => mb_substr($client->first_name, 0, 1) . '.' . mb_substr($client->last_name, 0, 1)
+                'first_name' => $client->first_name ?? null,
+                'last_name'  => $client->last_name ?? null,
+                'initials'   => mb_substr($client->first_name, 0, 1) . '.' . mb_substr($client->last_name, 0, 1) ?? null,
             ],
             'address'      => [
-                'city'    => $client->city,
-                'country' => $client->country,
-                'zipcode' => $client->zip,
-                'state'   => $client->state,
+                'city'    => $client->city ?? null,
+                'country' => $client->country ?? null,
+                'zipcode' => $client->zip ?? null,
+                'state'   => $client->state ?? null,
                 'street'  => $contact_street,
-                'number'  => $contact_house_number,
+                'number'  => $contact_house_number ?? null,
             ],
         ];
 
@@ -912,6 +936,131 @@ class Openprovider extends Module
     {
         // TODO: Change the autogenerated stub
         return parent::editService($package, $service, $vars, $parent_package, $parent_service);
+    }
+
+    /**
+     * Returns all tabs to display to a client when managing a service whose
+     * package uses this module
+     *
+     * @param stdClass $package A stdClass object representing the selected package
+     * @return array An array of tabs in the format of method => title.
+     *  Example: array('methodName' => "Title", 'methodName2' => "Title2")
+     */
+    public function getClientTabs($package): array
+    {
+        if ($package->meta->type == 'domain') {
+            return [
+                'tabClientNameservers' => Language::_('OpenProvider.tab_nameservers.title', true),
+            ];
+        }
+
+        return [];
+    }
+
+    /**
+     * @param stdClass $package package row from database
+     * @param stdClass $service service row from database
+     * @param array|null $get if not null, method get data for this page NOT USED IN THIS METHOD
+     * @param array|null $post if not null, method update data loaded from form on this page
+     * @param array|null $files NOT USED IN THIS METHOD
+     *
+     * @return string|bool HTML generated by the view or FALSE if something went wrong
+     */
+    public function tabClientNameservers($package, $service, array $get = null, array $post = null, array $files = null)
+    {
+        // TODO: if domain pending or suspended return false to make this page unavailable
+
+        $this->view = new View('tab_client_nameservers', 'default');
+        $this->view->setDefaultView($this->default_module_view_path);
+
+        // Load the helpers required for this view
+        Loader::loadHelpers($this, array('Form', 'Html'));
+
+        $row = $this->getModuleRow($package->module_row);
+        $api = $this->getApi($row->meta->username, $row->meta->password, $row->meta->test_mode == 'true');
+
+        $this->database_helper->createOpenproviderServiceIdDomainIdTable();
+
+        // Set any specific data for this tab
+        $vars = new stdClass();
+        
+        $op_domain_id = $this->database_helper->getMappingServiceDomainByServiceId($service->id)->domain_id;
+
+        if (!$op_domain_id) {
+            $vars->error = Language::_('OpenProvider.!error.domain.not_exist');
+            $this->view->set('vars', $vars);
+
+            return $this->view->fetch();
+        }
+
+        if (!empty($post)) {
+            $vars = (object) $post;
+
+            $response = $this->modifyNameServersInOpenProvider($api, $op_domain_id, $post['ns']);
+        } else {
+            $response = $this->getDomainInfoFromOpenProvider($api, $op_domain_id);
+
+            if (!empty($response->getData()) && $response->getCode() == 0) {
+                $vars->ns = array_map(function ($name_server) {
+                    return $name_server['name'];
+                }, $response->getData()['name_servers']);
+            }
+        }
+
+        $this->logRequest($api);
+
+        if ($response->getCode() != 0) {
+            $vars->error = $response->getMessage() . '. code: ' . $response->getCode();
+        }
+        
+        $vars->error = isset($vars->error) ?
+            str_replace('"', '\'', str_replace('`', '\'', $vars->error)) :
+            '';
+        
+        $this->view->set('vars', $vars);
+
+        return $this->view->fetch();
+    }
+
+    /**
+     * Modify domain's name servers
+     *
+     * @param OpenProviderApi $api
+     * @param int $op_domain_id
+     * @param array $name_servers ['name_server1', 'name_server2'...]
+     *
+     * @return Response
+     */
+    private function modifyNameServersInOpenProvider(OpenProviderApi $api, int $op_domain_id, array $name_servers): Response
+    {
+        $args['id'] = $op_domain_id;
+
+        foreach ($name_servers as $ns) {
+            if (empty($ns)) {
+                continue;
+            }
+
+            $args['name_servers'][] = [
+                'name' => $ns
+            ];
+        }
+
+        return $api->call('modifyDomainRequest', $args);
+    }
+
+    /**
+     * Get domain info from OpenProvider
+     *
+     * @param OpenProviderApi $api
+     * @param int $op_domain_id
+     *
+     * @return Response
+     */
+    private function getDomainInfoFromOpenProvider(OpenProviderApi $api, int $op_domain_id): Response
+    {
+        $args['id'] = $op_domain_id;
+
+        return $api->call('retrieveDomainRequest', $args);
     }
 
     /**
@@ -1048,8 +1197,9 @@ class Openprovider extends Module
      */
     public function validateConnection($password, $username, $test_mode = null): bool
     {
-        $api             = $this->getApi();
-        $database_helper = new DatabaseHelper($this->Record);
+        $api = $this->getApi();
+
+        $this->database_helper->createOpenproviderTokenTable();
 
         $api->getConfig()->setHost($test_mode == 'true' ? OpenProviderApi::API_CTE_URL : OpenProviderApi::API_URL);
 
@@ -1061,7 +1211,7 @@ class Openprovider extends Module
         $is_token_exists = strlen($token) > 0;
 
         if ($is_token_exists) {
-            $database_helper->setOpenproviderTokenToDatabase(
+            $this->database_helper->setOpenproviderTokenToDatabase(
                 $this->generateUserHash($username, $password, $test_mode == 'true'),
                 $token,
                 date('Y-m-d H:i:s', strtotime(date('Y-m-d H:i:s') . ' +48 hours'))
