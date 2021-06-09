@@ -64,11 +64,11 @@ class Openprovider extends Module
     /**
      * The methods are invoked when the module is installed, upgraded, or uninstalled respectively.
      *
-     * @return array|void
+     * @return void
      *
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-install/upgrade/uninstall()
      */
-    public function install(): ?array
+    public function install(): void
     {
         $this->database_helper->createOpenproviderTokenTable();
         $this->database_helper->createOpenproviderHandlesTable();
@@ -78,11 +78,11 @@ class Openprovider extends Module
     /**
      * The methods are invoked when the module is installed, upgraded, or uninstalled respectively.
      *
-     * @return array|void
+     * @return void
      *
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-install/upgrade/uninstall()
      */
-    public function uninstall($module_id, $last_instance): ?array
+    public function uninstall($module_id, $last_instance): void
     {
         $this->database_helper->deleteOpenproviderTokenTable();
         $this->database_helper->deleteOpenproviderHandlesTable();
