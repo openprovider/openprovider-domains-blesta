@@ -6,7 +6,7 @@ Offer your customers almost any TLD, from the most popular to the most exotic, a
 
 - Copy the folder `openprovider/` into the `<blesta root>/components/modules/` folder of your Blesta instance
 - Create a (free!) [Openprovider account](https://openprovider.com/) if you haven't already.
-- Navigate to `<blesta root>/components/modules/openprovider/config/openprovider.php`and configure the first array with the TLDs which you would like to support. Check your Openprovider account for a full list of the more than 1800 TLDs available for registration. Please note that in the Beta version of the module, not all TLDs can be automatically registered.
+- Navigate to `<blesta root>/components/modules/openprovider/config/openprovider.php`and configure the first array with the TLDs which you would like to support. Check your Openprovider account for a full list of the more than 2800 TLDs available for registration. Please note that in the Beta version of the module, not all TLDs can be automatically registered.
 
 ```php
 // Allowed tlds
