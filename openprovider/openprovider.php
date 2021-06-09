@@ -634,7 +634,7 @@ class Openprovider extends Module
             'domain'         => $splitted_domain_name,
             'period'         => $vars['years'],
             'name_servers'   => $name_servers,
-            'autorenew'      => 'off',
+            'autorenew'      => 'default',
         ];
 
         if (!empty($additional_data['domain_additional_data'])) {
