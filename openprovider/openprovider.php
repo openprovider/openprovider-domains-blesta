@@ -20,12 +20,12 @@ class Openprovider extends Module
     /**
      * @var string default module path
      */
-    private string $default_module_view_path;
+    private $default_module_view_path;
 
     /**
      * @var DatabaseHelper
      */
-    private DatabaseHelper $database_helper;
+    private $database_helper;
 
     /**
      * Openprovider constructor.

@@ -5,12 +5,12 @@ class LastRequest
     /**
      * @var string|null last request command
      */
-    private ?string $cmd;
+    private $cmd;
 
     /**
      * @var array|null last request arguments
      */
-    private ?array $args;
+    private $args;
 
     /**
      * @param string $cmd

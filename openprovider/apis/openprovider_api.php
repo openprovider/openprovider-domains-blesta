@@ -18,21 +18,45 @@ class OpenProviderApi
     const API_URL = 'https://api.openprovider.eu';
     const API_CTE_URL = 'https://api.cte.openprovider.eu';
 
-    private Configuration $configuration;
+    /**
+     * @var Configuration
+     */
+    private $configuration;
 
-    private HttpClient $http_client;
+    /**
+     * @var HttpClient
+     */
+    private $http_client;
 
-    private CommandMapping $command_mapping;
+    /**
+     * @var CommandMapping
+     */
+    private $command_mapping;
 
-    private ApiConfig $api_config;
+    /**
+     * @var ApiConfig
+     */
+    private $api_config;
 
-    private ParamsCreator $params_creator;
+    /**
+     * @var ParamsCreator
+     */
+    private $params_creator;
 
-    private Serializer $serializer;
+    /**
+     * @var Serializer
+     */
+    private $serializer;
 
-    private Response $last_response;
+    /**
+     * @var Response
+     */
+    private $last_response;
 
-    private LastRequest $last_request;
+    /**
+     * @var LastRequest
+     */
+    private $last_request;
 
     public function __construct()
     {
