@@ -16,16 +16,21 @@ class Openprovider extends Module
     private const TRANSFER_OPERATION = 'transfer';
     private const REGISTER_OPERATION = 'register';
 
+    /**
+     * This time was chosen because 100 seconds is enough to execute any sequence of requests
+     */
+    private const MINIMUM_TOKEN_LIFE_TIME_IN_SECONDS = 100;
+
+    /**
+     * This lifetime is enough to use one token per session.
+     * But if not, token will be requested again
+     */
+    private const TOKEN_LIFE_TIME_IN_MINUTES = 10;
 
     /**
      * @var string default module path
      */
     private $default_module_view_path;
-
-    /**
-     * @var DatabaseHelper
-     */
-    private $database_helper;
 
     /**
      * Openprovider constructor.
@@ -40,15 +45,12 @@ class Openprovider extends Module
 
         Loader::load(__DIR__ . DS . 'vendor' . DS . 'autoload.php');
         Loader::loadComponents($this, ['Input', 'Record']);
-        Loader::loadModels($this, ['ModuleManager']);
+        Loader::loadModels($this, ['ModuleManager', 'ModuleClientMeta']);
         Loader::load(__DIR__ . DS . 'apis' . DS . 'openprovider_api.php');
-        Loader::load(__DIR__ . DS . 'helpers' . DS . 'database_helper.php');
 
         Configure::load('openprovider', __DIR__ . DS . 'config' . DS);
 
         $this->default_module_view_path = 'components' . DS . 'modules' . DS . self::MODULE_NAME . DS;
-
-        $this->database_helper = new DatabaseHelper($this->Record);
 
         if (is_null($this->getModule())) {
             $modules = $this->ModuleManager->getInstalled();
@@ -69,11 +71,7 @@ class Openprovider extends Module
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-install/upgrade/uninstall()
      */
     public function install(): void
-    {
-        $this->database_helper->createOpenproviderTokenTable();
-        $this->database_helper->createOpenproviderHandlesTable();
-        $this->database_helper->createOpenProviderServiceIdDomainIdTable();
-    }
+    {}
 
     /**
      * The methods are invoked when the module is installed, upgraded, or uninstalled respectively.
@@ -83,11 +81,7 @@ class Openprovider extends Module
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-install/upgrade/uninstall()
      */
     public function uninstall($module_id, $last_instance): void
-    {
-        $this->database_helper->deleteOpenproviderTokenTable();
-        $this->database_helper->deleteOpenproviderHandlesTable();
-        $this->database_helper->deleteOpenProviderServiceIdDomainIdTable();
-    }
+    {}
 
     /**
      * @param mixed $module
@@ -580,9 +574,6 @@ class Openprovider extends Module
     {
         $splitted_domain_name = $this->splitDomainName($vars['domain']);
 
-        $this->database_helper->createOpenproviderHandlesTable();
-        $this->database_helper->createOpenproviderServiceIdDomainIdTable();
-
         $api = $this->getApi($row->meta->username, $row->meta->password, $row->meta->test_mode == 'true');
 
         if ($package->meta->type == 'domain') {
@@ -624,8 +615,6 @@ class Openprovider extends Module
 
         $handles['all'] = $handle;
 
-        $this->database_helper->setServiceHandles($vars['service_id'], $handles);
-
         $domain = [
             'admin_handle'   => $handle,
             'billing_handle' => $handle,
@@ -657,11 +646,7 @@ class Openprovider extends Module
                 $api->call('deleteCustomerRequest', ['handle' => $handle]);
                 $this->logRequest($api);
             }
-
-            return;
         }
-
-        $this->database_helper->setMappingServiceDomain($vars['service_id'], $domain_response->getData()['id']);
     }
 
     /**
@@ -681,20 +666,34 @@ class Openprovider extends Module
     {
         $api = new OpenProviderApi();
 
-        $this->database_helper->createOpenproviderTokenTable();
-
         $api->getConfig()->setHost($test_mode ? OpenProviderApi::API_CTE_URL : OpenProviderApi::API_URL);
 
         if (is_null($username) || is_null($password)) {
             return $api;
         }
 
+        $module_id = $this->getModule()->id;
+
         $user_hash = $this->generateUserHash($username, $password, $test_mode);
 
-        $token = $this->database_helper->getOpenproviderTokenFromDatabase($user_hash);
+        $var_name_token_until_date = 'token_until_date_' . $user_hash;
+        $var_name_token = 'token_' . $user_hash;
 
-        if ($token) {
-            $api->getConfig()->setToken($token);
+        $token_until_date = $this->ModuleManager->getMeta($module_id, $var_name_token_until_date);
+        $token = $this->ModuleManager->getMeta($module_id, $var_name_token);
+
+        $is_token_until_date_valid = false;
+
+        if (isset($token_until_date->{$var_name_token_until_date}) && $token_until_date->{$var_name_token_until_date}) {
+            $is_token_until_date_valid = ((new DateTime($token_until_date->{$var_name_token_until_date}))->getTimestamp()
+                - (new DateTime())->getTimestamp()) > self::MINIMUM_TOKEN_LIFE_TIME_IN_SECONDS;
+        }
+
+        $is_token_exist = isset($token->{$var_name_token}) &&
+            $token->{$var_name_token};
+
+        if ($is_token_until_date_valid && $is_token_exist) {
+            $api->getConfig()->setToken($token->{$var_name_token});
 
             return $api;
         }
@@ -707,9 +706,18 @@ class Openprovider extends Module
             return $api;
         }
 
-        $token_until_date = date('Y-m-d H:i:s', strtotime(date('Y-m-d H:i:s') . ' +48 hours'));
+        $token_until_date = date('Y-m-d H:i:s', strtotime(date('Y-m-d H:i:s') . ' +' . self::TOKEN_LIFE_TIME_IN_MINUTES . ' minutes'));
 
-        $this->database_helper->setOpenproviderTokenToDatabase($user_hash, $token, $token_until_date);
+        $this->ModuleManager->setMeta($module_id, [
+            [
+                'key' => $var_name_token_until_date,
+                'value' => $token_until_date
+            ],
+            [
+                'key' => $var_name_token,
+                'value' => $token,
+            ]
+        ]);
 
         $api->getConfig()->setToken($token);
 
@@ -725,11 +733,11 @@ class Openprovider extends Module
      */
     private function generateUserHash($username, $password, $test_mode): string
     {
-        return md5(
+        return substr(md5(
             substr($username, 0, 2) .
             substr($password, 0, 2) .
             ($test_mode ? 'on' : 'off')
-        );
+        ), 0, 5);
     }
 
     /**
@@ -968,8 +976,15 @@ class Openprovider extends Module
      */
     public function tabClientNameservers($package, $service, array $get = null, array $post = null, array $files = null)
     {
-        // TODO: if domain pending or suspended return false to make this page unavailable
+        $domain_name = '';
+        foreach ($service->fields as $field) {
+            if ($field->key == 'domain') {
+                $domain_name = $field->value;
+                break;
+            }
+        }
 
+        // TODO: if domain pending or suspended return false to make this page unavailable
         $this->view = new View('tab_client_nameservers', 'default');
         $this->view->setDefaultView($this->default_module_view_path);
 
@@ -979,44 +994,45 @@ class Openprovider extends Module
         $row = $this->getModuleRow($package->module_row);
         $api = $this->getApi($row->meta->username, $row->meta->password, $row->meta->test_mode == 'true');
 
-        $this->database_helper->createOpenproviderServiceIdDomainIdTable();
-
         // Set any specific data for this tab
         $vars = new stdClass();
-        
-        $op_domain_id = $this->database_helper->getMappingServiceDomainByServiceId($service->id)->domain_id;
 
-        if (!$op_domain_id) {
+        $args = [
+            'full_name' => $domain_name,
+        ];
+        
+        $op_domain_request = $api->call('searchDomainRequest', $args);
+        $this->logRequest($api);
+
+        if ($op_domain_request->getCode() != 0 || count($op_domain_request->getData()['results']) < 1) {
             $vars->error = Language::_('OpenProvider.!error.domain.not_exist');
             $this->view->set('vars', $vars);
 
             return $this->view->fetch();
         }
 
+        $op_domain = $op_domain_request->getData()['results'][0];
+        
         if (!empty($post)) {
             $vars = (object) $post;
 
-            $response = $this->modifyNameServersInOpenProvider($api, $op_domain_id, $post['ns']);
-        } else {
-            $response = $this->getDomainInfoFromOpenProvider($api, $op_domain_id);
+            $response = $this->modifyNameServersInOpenProvider($api, $op_domain['id'], $post['ns']);
 
-            if (!empty($response->getData()) && $response->getCode() == 0) {
-                $vars->ns = array_map(function ($name_server) {
-                    return $name_server['name'];
-                }, $response->getData()['name_servers']);
+            if ($response->getCode() != 0) {
+                $vars->error = $response->getMessage() . '. code: ' . $response->getCode();
             }
+
+            $vars->error = isset($vars->error) ?
+                str_replace('"', '\'', str_replace('`', '\'', $vars->error)) :
+                '';
+
+        } else {
+            $vars->ns = array_map(function ($name_server) {
+                return $name_server['name'];
+            }, $op_domain['name_servers']);
         }
 
         $this->logRequest($api);
-
-        if ($response->getCode() != 0) {
-            $vars->error = $response->getMessage() . '. code: ' . $response->getCode();
-        }
-        
-        $vars->error = isset($vars->error) ?
-            str_replace('"', '\'', str_replace('`', '\'', $vars->error)) :
-            '';
-        
         $this->view->set('vars', $vars);
 
         return $this->view->fetch();
@@ -1199,7 +1215,7 @@ class Openprovider extends Module
     {
         $api = $this->getApi();
 
-        $this->database_helper->createOpenproviderTokenTable();
+        $module_id = $this->getModule()->id;
 
         $api->getConfig()->setHost($test_mode == 'true' ? OpenProviderApi::API_CTE_URL : OpenProviderApi::API_URL);
 
@@ -1211,11 +1227,20 @@ class Openprovider extends Module
         $is_token_exists = strlen($token) > 0;
 
         if ($is_token_exists) {
-            $this->database_helper->setOpenproviderTokenToDatabase(
-                $this->generateUserHash($username, $password, $test_mode == 'true'),
-                $token,
-                date('Y-m-d H:i:s', strtotime(date('Y-m-d H:i:s') . ' +48 hours'))
-            );
+            $user_hash = $this->generateUserHash($username, $password, $test_mode == 'true');
+            $var_name_token_until_date = 'token_until_date_' . $user_hash;
+            $var_name_token = 'token_' . $user_hash;
+
+            $this->ModuleManager->setMeta($module_id, [
+                [
+                    'key' => $var_name_token_until_date,
+                    'value' => date('Y-m-d H:i:s', strtotime(date('Y-m-d H:i:s') . ' +' . self::TOKEN_LIFE_TIME_IN_MINUTES . ' minutes'))
+                ],
+                [
+                    'key' => $var_name_token,
+                    'value' => $token,
+                ]
+            ]);
         }
 
         return $is_token_exists;
