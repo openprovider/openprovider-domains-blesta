@@ -16,6 +16,16 @@ class Openprovider extends Module
     private const TRANSFER_OPERATION = 'transfer';
     private const REGISTER_OPERATION = 'register';
 
+    /**
+     * This time was chosen because 100 seconds is enough to execute any sequence of requests
+     */
+    private const MINIMUM_TOKEN_LIFE_TIME_IN_SECONDS = 100;
+
+    /**
+     * This lifetime is enough to use one token per session.
+     * But if not, token will be requested again
+     */
+    private const TOKEN_LIFE_TIME_IN_MINUTES = 10;
 
     /**
      * @var string default module path
@@ -676,7 +686,7 @@ class Openprovider extends Module
 
         if (isset($token_until_date->{$var_name_token_until_date}) && $token_until_date->{$var_name_token_until_date}) {
             $is_token_until_date_valid = ((new DateTime($token_until_date->{$var_name_token_until_date}))->getTimestamp()
-                - (new DateTime())->getTimestamp()) > 100;
+                - (new DateTime())->getTimestamp()) > self::MINIMUM_TOKEN_LIFE_TIME_IN_SECONDS;
         }
 
         $is_token_exist = isset($token->{$var_name_token}) &&
@@ -696,7 +706,7 @@ class Openprovider extends Module
             return $api;
         }
 
-        $token_until_date = date('Y-m-d H:i:s', strtotime(date('Y-m-d H:i:s') . ' +10 minutes'));
+        $token_until_date = date('Y-m-d H:i:s', strtotime(date('Y-m-d H:i:s') . ' +' . self::TOKEN_LIFE_TIME_IN_MINUTES . ' minutes'));
 
         $this->ModuleManager->setMeta($module_id, [
             [
@@ -1224,7 +1234,7 @@ class Openprovider extends Module
             $this->ModuleManager->setMeta($module_id, [
                 [
                     'key' => $var_name_token_until_date,
-                    'value' => date('Y-m-d H:i:s', strtotime(date('Y-m-d H:i:s') . ' +10 minutes'))
+                    'value' => date('Y-m-d H:i:s', strtotime(date('Y-m-d H:i:s') . ' +' . self::TOKEN_LIFE_TIME_IN_MINUTES . ' minutes'))
                 ],
                 [
                     'key' => $var_name_token,
