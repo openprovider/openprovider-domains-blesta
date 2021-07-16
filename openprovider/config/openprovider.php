@@ -178,4 +178,3 @@ Configure::set('OpenProvider.domain_fields.edu.es', Configure::get('OpenProvider
 Configure::set('OpenProvider.domain_fields.org.es', Configure::get('OpenProvider.domain_fields.es'));
 
 require_once __DIR__ . '/countries.php';
-require_once __DIR__ . '/us-states.php';

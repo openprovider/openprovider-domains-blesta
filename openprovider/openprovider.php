@@ -27,6 +27,19 @@ class Openprovider extends Module
      */
     private const TOKEN_LIFE_TIME_IN_MINUTES = 10;
 
+    private const FIELDS_TO_COMPARE_CUSTOMERS = [
+        'first_name',
+        'last_name',
+        'company_name',
+        'phone_number',
+        'address',
+        'email',
+        'country',
+        'state',
+        'city',
+        'zipcode',
+    ];
+
     /**
      * @var string default module path
      */
@@ -1237,24 +1250,7 @@ class Openprovider extends Module
 
             $op_customers[$handle] = [
                 'type'    => [$key],
-                'contact' => [
-                    'first_name'   => $op_customer['name']['first_name'],
-                    'last_name'    => $op_customer['name']['last_name'],
-                    'company_name' => $op_customer['company_name'],
-                    'email'        => $op_customer['email'],
-                    'city'         => $op_customer['address']['city'],
-                    'state'        => $op_customer['address']['state'],
-                    'zipcode'      => $op_customer['address']['zipcode'],
-                    'country'      => $op_customer['address']['country'],
-
-                    'address' => trim($op_customer['address']['street'] . ' ' .
-                        $op_customer['address']['number'] . ' ' .
-                        $op_customer['address']['suffix']),
-
-                    'phone_number' => $op_customer['phone']['country_code'] .
-                        $op_customer['phone']['area_code'] .
-                        $op_customer['phone']['subscriber_number'],
-                ]
+                'contact' => $this->getCustomerArrayFromOpCustomer($op_customer),
             ];
         }
 
@@ -1389,17 +1385,12 @@ class Openprovider extends Module
             if (!is_null($resembling_customers) || !empty($resembling_customers)) {
                 $similar_customer_found = false;
                 foreach ($resembling_customers as $resembling_customer) {
+                    $formatted_resembling_customer = $this->getCustomerArrayFromOpCustomer($resembling_customer);
                     if (
-                        trim($resembling_customer['address']['street'] . ' ' .
-                        $resembling_customer['address']['number'] . ' ' .
-                        $resembling_customer['address']['suffix']) == $customers_to_update[$type]['address'] &&
-                        $resembling_customer['address']['country'] == $customers_to_update[$type]['country'] &&
-                        $resembling_customer['address']['state'] == $customers_to_update[$type]['state'] &&
-                        $resembling_customer['address']['zipcode'] == $customers_to_update[$type]['zipcode'] &&
-                        $resembling_customer['address']['city'] == $customers_to_update[$type]['city'] &&
-                        ($resembling_customer['phone']['country_code'] .
-                        $resembling_customer['phone']['area_code'] .
-                        $resembling_customer['phone']['subscriber_number'] == $customers_to_update[$type]['phone_number'])
+                        $this->compareTwoCustomerArrays(
+                            $formatted_resembling_customer,
+                            $customers_to_update[$type],
+                            self::FIELDS_TO_COMPARE_CUSTOMERS)
                     ) {
                         $new_handles[$type . '_handle'] = $resembling_customer['handle'];
                         $similar_customer_found = true;
@@ -1412,52 +1403,7 @@ class Openprovider extends Module
                 }
             }
 
-            Loader::load(__DIR__ . DS . 'helpers' . DS . 'address_splitter.php');
-            Loader::load(__DIR__ . DS . 'helpers' . DS . 'phone_analyzer.php');
-
-            // processing phone to correct format
-            $contact_number = PhoneAnalyzer::makePhoneCorrectFormat($customers_to_update[$type]['phone_number'], $customers_to_update[$type]['country']);
-            if ($contact_number) {
-                $phone = PhoneAnalyzer::makePhoneArray($contact_number);
-            }
-
-            // processing address
-            try {
-                $contact_splitted_address = AddressSplitter::splitAddress($customers_to_update[$type]['address']);
-                $contact_house_number     = $contact_splitted_address['houseNumberParts']['base'];
-                $contact_street           = $contact_splitted_address['streetName'] .
-                    ' ' . $contact_splitted_address['additionToAddress2'];
-            } catch (Exception $e) {
-                $should_use_full_address =
-                    strpos($e->getMessage(), ' could not be splitted into street name and house number.') !== false;
-
-                if (!$should_use_full_address) {
-                    throw $e;
-                }
-
-                $contact_street = $customers_to_update[$type]['address'];
-            }
-
-            $args = [
-                'company_name' => $customers_to_update[$type]['company_name'],
-                'email'        => $customers_to_update[$type]['email'],
-                'phone'        => $phone ?? $contact_number,
-
-                'name' => [
-                    'first_name' => $customers_to_update[$type]['first_name'] ?? null,
-                    'last_name'  => $customers_to_update[$type]['last_name'] ?? null,
-                    'initials'   => mb_substr($customers_to_update[$type]['first_name'], 0, 1) . '.' . mb_substr($customers_to_update[$type]['last_name'], 0, 1) ?? null,
-                ],
-
-                'address' => [
-                    'city'    => $customers_to_update[$type]['city'] ?? null,
-                    'country' => $customers_to_update[$type]['country'] ?? null,
-                    'zipcode' => $customers_to_update[$type]['zipcode'] ?? null,
-                    'state'   => $customers_to_update[$type]['state'] ?? null,
-                    'street'  => $contact_street,
-                    'number'  => $contact_house_number ?? null,
-                ],
-            ];
+            $args = $this->getCustomerForOpFromArray($customers_to_update[$type]);
 
             $create_customer_request = $api->call('createCustomerRequest', $args);
 
@@ -1685,16 +1631,89 @@ class Openprovider extends Module
         return $module_rows;
     }
 
-    private function compareCustomers($customer1, $customer2): bool
+    /**
+     * @param array $op_customer
+     * @return array one-dimensional array with customer data
+     */
+    private function getCustomerArrayFromOpCustomer(array $op_customer): array
     {
-        $compare_fields = [
-            'address', // full address = {street . ' ' . number . ' ' . prefix}
-            'phone_number', // {country_code(with '+') . area_code . subscriber_number}
-            'company_name',
-        ];
+        return [
+            'first_name'   => $op_customer['name']['first_name'] ?? '',
+            'last_name'    => $op_customer['name']['last_name'] ?? '',
+            'company_name' => $op_customer['company_name'] ?? '',
+            'email'        => $op_customer['email'] ?? '',
+            'city'         => $op_customer['address']['city'] ?? '',
+            'state'        => $op_customer['address']['state'] ?? '',
+            'zipcode'      => $op_customer['address']['zipcode'] ?? '',
+            'country'      => $op_customer['address']['country'] ?? '',
 
-        foreach ($compare_fields as $field) {
-            if ($customer1[$field] !== $customer2[$field]) {
+            'address' => trim(($op_customer['address']['street'] ?? '') . ' ' .
+                ($op_customer['address']['number'] ?? '') . ' ' .
+                ($op_customer['address']['suffix'] ?? '')),
+
+            'phone_number' => ($op_customer['phone']['country_code'] ?? '') .
+                ($op_customer['phone']['area_code'] ?? '') .
+                ($op_customer['phone']['subscriber_number'] ?? ''),
+        ];
+    }
+
+    /**
+     * @param array $customer_array
+     * @return array formatted for openprovider
+     */
+    private function getCustomerForOpFromArray(array $customer_array): array
+    {
+        Loader::load(__DIR__ . DS . 'helpers' . DS . 'address_splitter.php');
+        Loader::load(__DIR__ . DS . 'helpers' . DS . 'phone_analyzer.php');
+
+        // processing phone to correct format
+        $contact_number = PhoneAnalyzer::makePhoneCorrectFormat($customer_array['phone_number'], $customer_array['country']);
+        if ($contact_number) {
+            $phone = PhoneAnalyzer::makePhoneArray($contact_number);
+        }
+
+        // processing address
+        try {
+            $contact_splitted_address = AddressSplitter::splitAddress($customer_array['address']);
+            $contact_house_number     = $contact_splitted_address['houseNumberParts']['base'];
+            $contact_street           = $contact_splitted_address['streetName'] .
+                ' ' . $contact_splitted_address['additionToAddress2'];
+        } catch (Exception $e) {
+            $contact_street = $customer_array['address'];
+        }
+
+        return [
+            'company_name' => $customer_array['company_name'],
+            'email'        => $customer_array['email'],
+            'phone'        => $phone ?? $contact_number,
+
+            'name' => [
+                'first_name' => $customer_array['first_name'] ?? null,
+                'last_name'  => $customer_array['last_name'] ?? null,
+                'initials'   => mb_substr($customer_array['first_name'], 0, 1) . '.' . mb_substr($customer_array['last_name'], 0, 1) ?? null,
+            ],
+
+            'address' => [
+                'city'    => $customer_array['city'] ?? null,
+                'country' => $customer_array['country'] ?? null,
+                'zipcode' => $customer_array['zipcode'] ?? null,
+                'state'   => $customer_array['state'] ?? null,
+                'street'  => $contact_street,
+                'number'  => $contact_house_number ?? null,
+            ],
+        ];
+    }
+
+    /**
+     * @param array $customer_one
+     * @param array $customer_two
+     * @param array $fields_to_compare
+     * @return bool true if customers equals
+     */
+    private function compareTwoCustomerArrays(array $customer_one, array $customer_two, array $fields_to_compare = []): bool
+    {
+        foreach ($fields_to_compare as $field) {
+            if ($customer_one[$field] != $customer_two[$field]) {
                 return false;
             }
         }
