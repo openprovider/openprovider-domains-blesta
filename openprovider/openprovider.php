@@ -1354,14 +1354,9 @@ class Openprovider extends Module
 
         foreach ($domain_handles as $type => $handle) {
             if (
-                $customers_from_op[$type]['first_name'] == $customers_to_update[$type]['first_name'] &&
-                $customers_from_op[$type]['last_name'] == $customers_to_update[$type]['last_name'] &&
-                $customers_from_op[$type]['company_name'] == $customers_to_update[$type]['company_name'] &&
-                $customers_from_op[$type]['email'] == $customers_to_update[$type]['email'] &&
-                $customers_from_op[$type]['country'] == $customers_to_update[$type]['country'] &&
-                $customers_from_op[$type]['state'] == $customers_to_update[$type]['state'] &&
-                $customers_from_op[$type]['address'] == $customers_to_update[$type]['address'] &&
-                $customers_from_op[$type]['phone_number'] == $customers_to_update[$type]['phone_number']
+                $this->compareTwoCustomerArrays($customers_from_op[$type],
+                    $customers_to_update[$type],
+                    self::FIELDS_TO_COMPARE_CUSTOMERS)
             ) {
                 continue;
             }
