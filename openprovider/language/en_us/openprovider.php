@@ -67,6 +67,26 @@ $lang['OpenProvider.tab_nameservers.title'] = 'Nameservers';
 $lang['OpenProvider.tab_nameserver.field_ns'] = 'Name Server %1$s'; // %1$s is the name server number
 $lang['OpenProvider.tab_nameservers.field_submit'] = 'Update Name Servers';
 
+$lang['OpenProvider.tab_domain_contacts.title'] = 'Domain Contacts';
+$lang['OpenProvider.tab_domain_contacts.field_submit'] = 'Update Domain Contacts';
+$lang['OpenProvider.tab_domain_contacts.contact_type.admin'] = 'Admin';
+$lang['OpenProvider.tab_domain_contacts.contact_type.billing'] = 'Billing';
+$lang['OpenProvider.tab_domain_contacts.contact_type.tech'] = 'Tech';
+$lang['OpenProvider.tab_domain_contacts.contact_type.owner'] = 'Owner';
+$lang['OpenProvider.tab_domain_contacts.field.first_name'] = 'First name';
+$lang['OpenProvider.tab_domain_contacts.field.last_name'] = 'Last name';
+$lang['OpenProvider.tab_domain_contacts.field.middle_name'] = 'Middle name';
+$lang['OpenProvider.tab_domain_contacts.field.email'] = 'Email';
+$lang['OpenProvider.tab_domain_contacts.field.phone_number'] = 'Phone';
+$lang['OpenProvider.tab_domain_contacts.field.company_name'] = 'Company';
+$lang['OpenProvider.tab_domain_contacts.field.address'] = 'Address';
+$lang['OpenProvider.tab_domain_contacts.field.city'] = 'City';
+$lang['OpenProvider.tab_domain_contacts.field.state'] = 'State';
+$lang['OpenProvider.tab_domain_contacts.field.country'] = 'Country';
+$lang['OpenProvider.tab_domain_contacts.field.zipcode'] = 'Zipcode';
+$lang['OpenProvider.tab_domain_contacts.field.vat'] = 'Vat';
+$lang['OpenProvider.tab_domain_contacts.field.company_or_individual_id'] = 'Company or Individual ID';
+
 // Errors add/update row
 $lang['OpenProvider.!error.username.empty']            = 'Username field shouldn\'t be empty!';
 $lang['OpenProvider.!error.password.empty']            = 'Password field shouldn\'t be empty!';

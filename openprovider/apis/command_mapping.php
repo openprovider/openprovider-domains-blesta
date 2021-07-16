@@ -24,6 +24,10 @@ class CommandMapping
         ],
 
         // CUSTOMER
+        'searchCustomerRequest' => [
+            self::COMMAND_MAP_METHOD => 'listCustomers',
+            self::COMMAND_MAP_CLASS => CustomerApi::class,
+        ],
         'retrieveCustomerRequest' => [
             self::COMMAND_MAP_METHOD => 'getCustomer',
             self::COMMAND_MAP_CLASS => CustomerApi::class,
