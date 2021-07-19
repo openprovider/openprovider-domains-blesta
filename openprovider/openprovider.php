@@ -57,7 +57,7 @@ class Openprovider extends Module
         Language::loadLang(self::MODULE_NAME, null, dirname(__FILE__) . DS . 'language' . DS);
 
         Loader::load(__DIR__ . DS . 'vendor' . DS . 'autoload.php');
-        Loader::loadComponents($this, ['Input', 'Record']);
+        Loader::loadComponents($this, ['Input']);
         Loader::loadModels($this, ['ModuleManager', 'ModuleClientMeta']);
         Loader::load(__DIR__ . DS . 'apis' . DS . 'openprovider_api.php');
 
@@ -615,18 +615,67 @@ class Openprovider extends Module
             ];
         }
 
-        // Creating contacts and saving handles to database
-        $handles = [];
-        $create_customer_response = $api->call('createCustomerRequest', $customer);
+        // Customer already registered searching
+        $search_customer_request = $api->call('searchCustomerRequest', [
+            'email_pattern' => $customer['email'],
+            'first_name_pattern' => $customer['name']['first_name'],
+            'last_name_pattern' => $customer['name']['last_name'],
+            'company_name_pattern' => $customer['company_name']
+        ]);
+
         $this->logRequest($api);
 
-        if (!isset($create_customer_response->getData()['handle'])) {
-            throw new Exception($create_customer_response->getMessage(), $create_customer_response->getCode());
+        // processing exception during search customer request
+        if ($search_customer_request->getCode() != 0) {
+            $this->Input->setErrors([
+                'errors' => [
+                    $search_customer_request->getMessage() . ': ' . $search_customer_request->getCode()
+                ]
+            ]);
+
+            return;
         }
 
-        $handle = $create_customer_response->getData()['handle'];
+        $resembling_customers = $search_customer_request->getData()['results'];
 
-        $handles['all'] = $handle;
+        // false if similar customer not exist else handle
+        $handle = false;
+        $found = false;
+
+        // comparing existed client with resembling customers
+        foreach ($resembling_customers as $resembling_customer) {
+            // true if similar customer found
+            $formatted_customer = $this->getCustomerArrayFromOpCustomer($customer);
+            $formatted_resembling_customer = $this->getCustomerArrayFromOpCustomer($resembling_customer);
+
+            if (
+                $this->compareTwoCustomerArrays(
+                $formatted_customer,
+                $formatted_resembling_customer,
+                self::FIELDS_TO_COMPARE_CUSTOMERS)
+            ) {
+                $handle = $resembling_customer['handle'];
+                $found = true;
+                break;
+            }
+        }
+
+        if (!$handle) {
+            // Creating contacts and saving handles to database
+            $create_customer_response = $api->call('createCustomerRequest', $customer);
+            $this->logRequest($api);
+
+            if (!isset($create_customer_response->getData()['handle'])) {
+                $this->Input->setErrors([
+                    'errors' => [
+                        $create_customer_response->getMessage() . ': ' . $create_customer_response->getCode()
+                    ]
+                ]);
+                return;
+            }
+
+            $handle = $create_customer_response->getData()['handle'];
+        }
 
         $domain = [
             'admin_handle'   => $handle,
@@ -653,12 +702,18 @@ class Openprovider extends Module
 
         $this->logRequest($api);
 
-        // if creation domain failed we need to delete customers for it
+        // if creation domain failed we need to delete customer for it
         if ($domain_response->getCode() != 0 || !isset($domain_response->getData()['id'])) {
-            foreach ($handles as $handle) {
+            if (!$found) {
                 $api->call('deleteCustomerRequest', ['handle' => $handle]);
                 $this->logRequest($api);
             }
+
+            $this->Input->setErrors([
+                'errors' => [
+                    $domain_response->getMessage() . ': ' . $domain_response->getCode()
+                ]
+            ]);
         }
     }
 
