@@ -7,34 +7,45 @@
     <div class="col-md-12">
         <?php $this->Form->create(); ?>
 
-        <div class="form-group">
-            <?php if (isset($vars->exist_request_epp) && $vars->exist_request_epp) { ?>
-                <div class="checkbox">
-                    <label>
-                        <?php
-                                $this->Form->fieldCheckbox('request_epp', 'true', (isset($vars->request_epp) ? $vars->request_epp : null) == 'true');
-                                $this->_('OpenProvider.tab_settings.field.request_epp');
-                                ?>
-                    </label>
+            <?php if (isset($vars->epp) && $vars->epp) { ?>
+                <div class="form-group">
+                    <?php $this->Form->label( $this->_( 'OpenProvider.tab_settings.field.epp', true ), 'epp' ); ?>
+                    <div class="input-group">
+                        <?php $this->Form->fieldText( 'epp', $this->Html->ifSet( $vars->epp ),  [ 'id' => 'epp', 'class' => 'form-control epp-input', 'placeholder' => $this->_( 'OpenProvider.tab_settings.field.epp', true ), 'disabled' => 'true', 'type' => 'password' ] ); ?>
+                        <div class="input-group-append">
+                            <span class="input-group-text show-hide-epp"><i class="fa fa-eye"></i></span>
+                            <span class="input-group-text generate-new-epp"><i class="fa fa-repeat"></i></span>
+                            <?php $this->Form->fieldHidden( 'generate-new-epp', '',  [ 'id' => 'generate-new-epp' ] ); ?>
+                        </div>
+                    </div>
                 </div>
             <?php } ?>
-        </div>
 
         <button class="btn btn-light float-right" type="submit">
             <i class="fas fa-edit"></i> <?php $this->_('OpenProvider.tab_settings.field.submit'); ?>
         </button>
-
         <?php $this->Form->end(); ?>
     </div>
-
 </div>
 
-<?php
-    if (isset($vars->error) && $vars->error) {
-        echo "
-            <script>
-                $('.alert.alert-success').toggleClass('alert-success alert-danger').text(`{$vars->error}`);
-            </script>
-        ";
-    }
-?>
+<script>
+    $('.show-hide-epp').on('click', function () {
+        let icon = $(this).find('i')
+        if (icon.hasClass('fa-eye')) {
+            icon.removeClass('fa-eye').addClass('fa-eye-slash')
+
+            let input = $('.epp-input')[0]
+            input.type = 'text';
+        } else {
+            icon.removeClass('fa-eye-slash').addClass('fa-eye')
+
+            let input = $('.epp-input')[0]
+            input.type = 'password';
+        }
+    });
+
+    $('.generate-new-epp').on('click', function () {
+        $('input[name="generate-new-epp"]')[0].value = 'true';
+        $('form').submit()
+    });
+</script>

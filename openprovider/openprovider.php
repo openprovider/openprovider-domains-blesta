@@ -1411,28 +1411,36 @@ class Openprovider extends Module
         $this->logRequest($api);
 
         if ($domain_response->getCode() != 0 || is_null($domain_response->getData()['results'])) {
-            $vars->error = Language::_('OpenProvider.!error.domain.not_exist', true);
-            $this->view->set('vars', $vars);
-
-            return $this->view->fetch();
+            $this->Input->setErrors([
+                'errors' => [
+                    Language::_('OpenProvider.!error.domain.not_exist', true)
+                ]
+            ]);
+            return false;
         }
 
         $op_domain = $domain_response->getData()['results'][0];
 
         if ($post) {
-            if ($post['request_epp']) {
-                $this->setMessage(
-                    'success',
-                    Language::_('OpenProvider.tab_settings.message.epp_code', true, $op_domain['auth_code'])
-                );
-            }
-
-            unset($post['request_epp']);
             $vars = (object) $post;
+
+            if (isset($post['generate-new-epp']) && $post['generate-new-epp'] == 'true') {
+                $reset_auth_code_response = $api->call('resetAuthCodeDomainRequest', [
+                    'id' => $op_domain['id'],
+                ]);
+
+                if ($reset_auth_code_response->getCode() != 0) {
+                    $this->Input->setErrors([
+                        'errors' => [
+                            $reset_auth_code_response->getMessage() . ': ' . $reset_auth_code_response->getCode(),
+                        ]
+                    ]);
+                }
+            }
         }
 
         if (isset($op_domain['auth_code']) && $op_domain['auth_code']) {
-            $vars->exist_request_epp = true;
+            $vars->epp = $op_domain['auth_code'];
         }
 
         $this->view->set('vars', $vars);

@@ -87,10 +87,10 @@ $lang['OpenProvider.tab_domain_contacts.field.zipcode']                  = 'Zipc
 $lang['OpenProvider.tab_domain_contacts.field.vat']                      = 'Vat';
 $lang['OpenProvider.tab_domain_contacts.field.company_or_individual_id'] = 'Company or Individual ID';
 
-$lang['OpenProvider.tab_settings.title']             = 'Settings';
-$lang['OpenProvider.tab_settings.field.request_epp'] = 'Request EPP Code/Transfer Key';
-$lang['OpenProvider.tab_settings.field.submit']      = 'Update Settings';
-$lang['OpenProvider.tab_settings.message.epp_code']  = 'Epp code: %s'; // %s is epp code
+$lang['OpenProvider.tab_settings.title']            = 'Settings';
+$lang['OpenProvider.tab_settings.field.epp']        = 'EPP Code/Transfer Key';
+$lang['OpenProvider.tab_settings.field.submit']     = 'Update Settings';
+$lang['OpenProvider.tab_settings.message.epp_code'] = 'Epp code: %s'; // %s is epp code
 
 // Errors add/update row
 $lang['OpenProvider.!error.username.empty']            = 'Username field shouldn\'t be empty!';
