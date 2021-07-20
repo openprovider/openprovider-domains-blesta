@@ -1,0 +1,40 @@
+<?php
+        echo $this->Html->ifSet( $vars->debug );
+        ?>
+
+<div class="row panel-fix">
+
+    <div class="col-md-12">
+        <?php $this->Form->create(); ?>
+
+        <div class="form-group">
+            <?php if (isset($vars->exist_request_epp) && $vars->exist_request_epp) { ?>
+                <div class="checkbox">
+                    <label>
+                        <?php
+                                $this->Form->fieldCheckbox('request_epp', 'true', (isset($vars->request_epp) ? $vars->request_epp : null) == 'true');
+                                $this->_('OpenProvider.tab_settings.field.request_epp');
+                                ?>
+                    </label>
+                </div>
+            <?php } ?>
+        </div>
+
+        <button class="btn btn-light float-right" type="submit">
+            <i class="fas fa-edit"></i> <?php $this->_('OpenProvider.tab_settings.field.submit'); ?>
+        </button>
+
+        <?php $this->Form->end(); ?>
+    </div>
+
+</div>
+
+<?php
+    if (isset($vars->error) && $vars->error) {
+        echo "
+            <script>
+                $('.alert.alert-success').toggleClass('alert-success alert-danger').text(`{$vars->error}`);
+            </script>
+        ";
+    }
+?>
