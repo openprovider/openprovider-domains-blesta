@@ -13,8 +13,8 @@
                     <div class="input-group">
                         <?php $this->Form->fieldText( 'epp', $this->Html->ifSet( $vars->epp ),  [ 'id' => 'epp', 'class' => 'form-control epp-input', 'placeholder' => $this->_( 'OpenProvider.tab_settings.field.epp', true ), 'disabled' => 'true', 'type' => 'password' ] ); ?>
                         <div class="input-group-append">
-                            <span class="input-group-text show-hide-epp"><i class="fa fa-eye"></i></span>
-                            <span class="input-group-text generate-new-epp"><i class="fa fa-repeat"></i></span>
+                            <span class="input-group-text show-hide-epp btn"><i class="fa fa-eye"></i></span>
+                            <span class="input-group-text generate-new-epp btn" data-toggle="tooltip" data-html="true" title="reset your auth code"><i class="fa fa-repeat"></i></span>
                             <?php $this->Form->fieldHidden( 'generate-new-epp', '',  [ 'id' => 'generate-new-epp' ] ); ?>
                         </div>
                     </div>
@@ -29,6 +29,10 @@
 </div>
 
 <script>
+    let generateNewAuthCodeButtonClickCount = 0;
+
+    $('.generate-new-epp[data-toggle="tooltip"]').tooltip()
+
     $('.show-hide-epp').on('click', function () {
         let icon = $(this).find('i')
         if (icon.hasClass('fa-eye')) {
@@ -45,7 +49,18 @@
     });
 
     $('.generate-new-epp').on('click', function () {
-        $('input[name="generate-new-epp"]')[0].value = 'true';
-        $('form').submit()
+
+        let input = $('input[name="generate-new-epp"]')[0];
+        input.value = 'true';
+
+        let icon = $(this).find('i');
+        icon[0].innerHTML = '  click again to reset your auth code';
+        icon.parent().addClass('btn-success')
+
+        $('.generate-new-epp[data-toggle="tooltip"]').tooltip('disable')
+
+        if (++generateNewAuthCodeButtonClickCount == 2) {
+            $('form').submit()
+        }
     });
 </script>

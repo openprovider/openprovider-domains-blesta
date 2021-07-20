@@ -25,7 +25,7 @@ class Openprovider extends Module
      * This lifetime is enough to use one token per session.
      * But if not, token will be requested again
      */
-    private const TOKEN_LIFE_TIME_IN_MINUTES = 10;
+    private const TOKEN_LIFE_TIME_IN_MINUTES = 15;
 
     private const FIELDS_TO_COMPARE_CUSTOMERS = [
         'first_name',
