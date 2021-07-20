@@ -310,6 +310,71 @@ class Openprovider extends Module
     }
 
     /**
+     * Validates input data when attempting to edit a package, returns the meta
+     * data to save when editing a package. Performs any action required to edit
+     * the package on the remote server. Sets Input errors on failure,
+     * preventing the package from being edited.
+     *
+     * @param stdClass $package A stdClass object representing the selected package
+     * @param array An array of key/value pairs used to edit the package
+     * @return array A numerically indexed array of meta fields to be stored for this package containing:
+     *
+     *  - key The key for this meta field
+     *  - value The value for this key
+     *  - encrypted Whether or not this field should be encrypted (default 0, not encrypted)
+     * @see Module::getModule()
+     * @see Module::getModuleRow()
+     */
+    public function editPackage($package, array $vars = null)
+    {
+        $meta = [];
+        if (isset($vars['meta']) && is_array($vars['meta'])) {
+            // Return all package meta fields
+            foreach ($vars['meta'] as $key => $value) {
+                $meta[] = [
+                    'key' => $key,
+                    'value' => $value,
+                    'encrypted' => 0
+                ];
+            }
+        }
+
+        return $meta;
+    }
+    
+    /**
+     * Validates input data when attempting to add a package, returns the meta
+     * data to save when adding a package. Performs any action required to add
+     * the package on the remote server. Sets Input errors on failure,
+     * preventing the package from being added.
+     *
+     * @param array An array of key/value pairs used to add the package
+     * @return array A numerically indexed array of meta fields to be stored for this package containing:
+     *
+     *  - key The key for this meta field
+     *  - value The value for this key
+     *  - encrypted Whether or not this field should be encrypted (default 0, not encrypted)
+     * @see Module::getModule()
+     * @see Module::getModuleRow()
+     */
+    public function addPackage(array $vars = null)
+    {
+        $meta = [];
+        if (isset($vars['meta']) && is_array($vars['meta'])) {
+            // Return all package meta fields
+            foreach ($vars['meta'] as $key => $value) {
+                $meta[] = [
+                    'key' => $key,
+                    'value' => $value,
+                    'encrypted' => 0
+                ];
+            }
+        }
+
+        return $meta;
+    }
+    
+    /**
      * @param null $vars
      *
      * @return ModuleFields contains all fields used when adding or editing a package,
@@ -342,26 +407,6 @@ class Openprovider extends Module
             )
         );
         $fields->setField($type);
-
-        // Set all TLD checkboxes
-        $tld_options = $fields->label(Language::_('OpenProvider.package_fields.tld_options', true));
-
-        $tlds = $this->getTlds();
-        sort($tlds);
-
-        foreach ($tlds as $tld) {
-            $tld_label = $fields->label($tld, 'tld_' . $tld);
-            $tld_options->attach(
-                $fields->fieldCheckbox(
-                    'meta[tlds][]',
-                    $tld,
-                    (isset($vars->meta['tlds']) && in_array($tld, $vars->meta['tlds'])),
-                    ['id' => 'tld_' . $tld],
-                    $tld_label
-                )
-            );
-        }
-        $fields->setField($tld_options);
 
         // Set nameservers
         for ($i = 1; $i <= 5; $i++) {
@@ -1428,6 +1473,7 @@ class Openprovider extends Module
                 $reset_auth_code_response = $api->call('resetAuthCodeDomainRequest', [
                     'id' => $op_domain['id'],
                 ]);
+                $this->logRequest($api);
 
                 if ($reset_auth_code_response->getCode() != 0) {
                     $this->Input->setErrors([
@@ -1435,6 +1481,8 @@ class Openprovider extends Module
                             $reset_auth_code_response->getMessage() . ': ' . $reset_auth_code_response->getCode(),
                         ]
                     ]);
+                } else {
+                    $op_domain['auth_code'] = $reset_auth_code_response->getData()['auth_code'];
                 }
             }
         }
@@ -1444,6 +1492,7 @@ class Openprovider extends Module
         }
 
         $this->view->set('vars', $vars);
+
         return $this->view->fetch();
     }
 
