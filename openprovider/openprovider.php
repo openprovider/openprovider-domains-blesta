@@ -1074,6 +1074,7 @@ class Openprovider extends Module
             return [
                 'tabNameservers' => Language::_('OpenProvider.tab_nameservers.title', true),
                 'tabDomainContacts' => Language::_('OpenProvider.tab_domain_contacts.title', true),
+                'tabSettings'       => Language::_('OpenProvider.tab_settings.title', true),
             ];
         }
 
@@ -1485,11 +1486,33 @@ class Openprovider extends Module
                     $op_domain['auth_code'] = $reset_auth_code_response->getData()['auth_code'];
                 }
             }
+
+            if (isset($post['lock']) && !empty($post['lock'])) {
+                $domain_transfer_lock = isset($post['lock']) && $post['lock'] == 'true';
+
+                $update_is_locked_domain_response = $api->call('modifyDomainRequest', [
+                    'id' => $op_domain['id'],
+                    'is_locked' => $domain_transfer_lock,
+                ]);
+                $this->logRequest($api);
+
+                if ($update_is_locked_domain_response->getCode() != 0) {
+                    $this->Input->setErrors([
+                        'errors' => [
+                            $update_is_locked_domain_response->getMessage() . ': ' . $update_is_locked_domain_response->getCode()
+                        ]
+                    ]);
+                } else {
+                    $op_domain['is_locked'] = $domain_transfer_lock;
+                }
+            }
         }
 
         if (isset($op_domain['auth_code']) && $op_domain['auth_code']) {
             $vars->epp = $op_domain['auth_code'];
         }
+
+        $vars->is_locked = isset($op_domain['is_locked']) && $op_domain['is_locked'] ? 'true' : 'false';
 
         $this->view->set('vars', $vars);
 

@@ -21,9 +21,12 @@
                 </div>
             <?php } ?>
 
-        <button class="btn btn-light float-right" type="submit">
-            <i class="fas fa-edit"></i> <?php $this->_('OpenProvider.tab_settings.field.submit'); ?>
-        </button>
+            <div class="custom-control custom-switch">
+                <?php $this->Form->fieldCheckbox( 'is_locked', 'true', isset($vars->is_locked) ? $vars->is_locked == 'true' : false,  [ 'id' => 'is_locked', 'class' => 'custom-control-input is_locked-switch' ] ); ?>
+                <?php $this->Form->label( $this->_('OpenProvider.tab_settings.field.is_locked' . '_' . $vars->is_locked, true), 'is_locked', [ 'class' => 'custom-control-label' ] ); ?>
+                <?php $this->Form->fieldHidden( 'lock', '',  [ 'id' => 'lock' ] ); ?>
+            </div>
+
         <?php $this->Form->end(); ?>
     </div>
 </div>
@@ -62,5 +65,13 @@
         if (++generateNewAuthCodeButtonClickCount == 2) {
             $('form').submit()
         }
+    });
+
+    $('.is_locked-switch').on('click', function () {
+        let checked = $(this).is(':checked');
+        let input = $('input[name="lock"]')[0]
+        input.value = checked ? 'true' : 'false';
+
+        $('form').submit();
     });
 </script>
