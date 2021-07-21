@@ -2,6 +2,7 @@
 
 use Openprovider\Api\Rest\Client\Dns\Api\NameserverServiceApi;
 use Openprovider\Api\Rest\Client\Dns\Api\ZoneServiceApi;
+use Openprovider\Api\Rest\Client\Domain\Api\AuthCodeApi;
 use Openprovider\Api\Rest\Client\Domain\Api\DomainPriceServiceApi;
 use Openprovider\Api\Rest\Client\Domain\Api\DomainServiceApi;
 use Openprovider\Api\Rest\Client\Auth\Api\AuthApi;
@@ -97,6 +98,10 @@ class CommandMapping
         'retrievePriceDomainRequest' => [
             self::COMMAND_MAP_METHOD => 'getPrice',
             self::COMMAND_MAP_CLASS => DomainPriceServiceApi::class,
+        ],
+        'resetAuthCodeDomainRequest' => [
+            self::COMMAND_MAP_METHOD => 'resetAuthCode',
+            self::COMMAND_MAP_CLASS => AuthCodeApi::class,
         ],
 
         // TLDS

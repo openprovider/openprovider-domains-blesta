@@ -25,7 +25,7 @@ class Openprovider extends Module
      * This lifetime is enough to use one token per session.
      * But if not, token will be requested again
      */
-    private const TOKEN_LIFE_TIME_IN_MINUTES = 10;
+    private const TOKEN_LIFE_TIME_IN_MINUTES = 15;
 
     private const FIELDS_TO_COMPARE_CUSTOMERS = [
         'first_name',
@@ -310,6 +310,71 @@ class Openprovider extends Module
     }
 
     /**
+     * Validates input data when attempting to edit a package, returns the meta
+     * data to save when editing a package. Performs any action required to edit
+     * the package on the remote server. Sets Input errors on failure,
+     * preventing the package from being edited.
+     *
+     * @param stdClass $package A stdClass object representing the selected package
+     * @param array An array of key/value pairs used to edit the package
+     * @return array A numerically indexed array of meta fields to be stored for this package containing:
+     *
+     *  - key The key for this meta field
+     *  - value The value for this key
+     *  - encrypted Whether or not this field should be encrypted (default 0, not encrypted)
+     * @see Module::getModule()
+     * @see Module::getModuleRow()
+     */
+    public function editPackage($package, array $vars = null)
+    {
+        $meta = [];
+        if (isset($vars['meta']) && is_array($vars['meta'])) {
+            // Return all package meta fields
+            foreach ($vars['meta'] as $key => $value) {
+                $meta[] = [
+                    'key' => $key,
+                    'value' => $value,
+                    'encrypted' => 0
+                ];
+            }
+        }
+
+        return $meta;
+    }
+    
+    /**
+     * Validates input data when attempting to add a package, returns the meta
+     * data to save when adding a package. Performs any action required to add
+     * the package on the remote server. Sets Input errors on failure,
+     * preventing the package from being added.
+     *
+     * @param array An array of key/value pairs used to add the package
+     * @return array A numerically indexed array of meta fields to be stored for this package containing:
+     *
+     *  - key The key for this meta field
+     *  - value The value for this key
+     *  - encrypted Whether or not this field should be encrypted (default 0, not encrypted)
+     * @see Module::getModule()
+     * @see Module::getModuleRow()
+     */
+    public function addPackage(array $vars = null)
+    {
+        $meta = [];
+        if (isset($vars['meta']) && is_array($vars['meta'])) {
+            // Return all package meta fields
+            foreach ($vars['meta'] as $key => $value) {
+                $meta[] = [
+                    'key' => $key,
+                    'value' => $value,
+                    'encrypted' => 0
+                ];
+            }
+        }
+
+        return $meta;
+    }
+    
+    /**
      * @param null $vars
      *
      * @return ModuleFields contains all fields used when adding or editing a package,
@@ -342,26 +407,6 @@ class Openprovider extends Module
             )
         );
         $fields->setField($type);
-
-        // Set all TLD checkboxes
-        $tld_options = $fields->label(Language::_('OpenProvider.package_fields.tld_options', true));
-
-        $tlds = $this->getTlds();
-        sort($tlds);
-
-        foreach ($tlds as $tld) {
-            $tld_label = $fields->label($tld, 'tld_' . $tld);
-            $tld_options->attach(
-                $fields->fieldCheckbox(
-                    'meta[tlds][]',
-                    $tld,
-                    (isset($vars->meta['tlds']) && in_array($tld, $vars->meta['tlds'])),
-                    ['id' => 'tld_' . $tld],
-                    $tld_label
-                )
-            );
-        }
-        $fields->setField($tld_options);
 
         // Set nameservers
         for ($i = 1; $i <= 5; $i++) {
@@ -1047,8 +1092,9 @@ class Openprovider extends Module
     {
         if ($package->meta->type == 'domain') {
             return [
-                'tabClientNameservers' => Language::_('OpenProvider.tab_nameservers.title', true),
+                'tabClientNameservers'    => Language::_('OpenProvider.tab_nameservers.title', true),
                 'tabClientDomainContacts' => Language::_('OpenProvider.tab_domain_contacts.title', true),
+                'tabClientSettings'       => Language::_('OpenProvider.tab_settings.title', true),
             ];
         }
 
@@ -1126,6 +1172,46 @@ class Openprovider extends Module
     }
 
     /**
+     * @param stdClass $package package row from database
+     * @param stdClass $service service row from database
+     * @param array|null $get if not null, method get data for this page NOT USED IN THIS METHOD
+     * @param array|null $post if not null, method update data loaded from form on this page
+     * @param array|null $files NOT USED IN THIS METHOD
+     *
+     * @return string|bool HTML generated by the view or FALSE if something went wrong
+     */
+    public function tabSettings(
+        $package,
+        $service,
+        array $get = null,
+        array $post = null,
+        array $files = null
+    )
+    {
+        return $this->manageSettings('tab_settings', $package, $service, $get, $post, $files);
+    }
+
+    /**
+     * @param stdClass $package package row from database
+     * @param stdClass $service service row from database
+     * @param array|null $get if not null, method get data for this page NOT USED IN THIS METHOD
+     * @param array|null $post if not null, method update data loaded from form on this page
+     * @param array|null $files NOT USED IN THIS METHOD
+     *
+     * @return string|bool HTML generated by the view or FALSE if something went wrong
+     */
+    public function tabClientSettings(
+        $package,
+        $service,
+        array $get = null,
+        array $post = null,
+        array $files = null
+    )
+    {
+        return $this->manageSettings('tab_client_settings', $package, $service, $get, $post, $files);
+    }
+
+    /**
      * @poram string $view view's name
      * @param stdClass $package package row from database
      * @param stdClass $service service row from database
@@ -1144,13 +1230,7 @@ class Openprovider extends Module
         array $files = null
     )
     {
-        $domain_name = '';
-        foreach ($service->fields as $field) {
-            if ($field->key == 'domain') {
-                $domain_name = $field->value;
-                break;
-            }
-        }
+        $domain_name = $this->getDomainNameFromService($service);
 
         // TODO: if domain pending or suspended return false to make this page unavailable
         $this->view = new View($view, 'default');
@@ -1206,8 +1286,6 @@ class Openprovider extends Module
         return $this->view->fetch();
     }
 
-
-
     /**
      * @param string $view view's name
      * @param stdClass $package package row from database
@@ -1236,17 +1314,10 @@ class Openprovider extends Module
         $vars = new stdClass();
 
         // getting domain to check it exists
-        $domain_name = '';
-        foreach ($service->fields as $field) {
-            if ($field->key == 'domain') {
-                $domain_name = $field->value;
-                break;
-            }
-        }
+        $domain_name = $this->getDomainNameFromService($service);
 
         if (empty($domain_name)) {
-            // TODO: move directly error message to language file
-            $vars->error = 'Domain name undefined!';
+            $vars->error = Language::_('OpenProvider.!error.domain.name_undefined', true);
             $this->view->set('vars', $vars);
 
             return $this->view->fetch();
@@ -1342,6 +1413,84 @@ class Openprovider extends Module
         }
 
         $vars->domain_contacts = $domain_contacts_from_op;
+        $this->view->set('vars', $vars);
+
+        return $this->view->fetch();
+    }
+
+    /**
+     * @param string $view view's name
+     * @param stdClass $package package row from database
+     * @param stdClass $service service row from database
+     * @param array|null $get if not null, method get data for this page NOT USED IN THIS METHOD
+     * @param array|null $post if not null, method update data loaded from form on this page
+     * @param array|null $files NOT USED IN THIS METHOD
+     *
+     * @return string|bool HTML generated by the view or FALSE if something went wrong
+     */
+    private function manageSettings(
+        $view,
+        $package,
+        $service,
+        array $get = null,
+        array $post = null,
+        array $files = null
+    )
+    {
+        $this->view = new View($view, 'default');
+        $this->view->setDefaultView($this->default_module_view_path);
+
+        // Load the helpers required for this view
+        Loader::loadHelpers($this, ['Form', 'Html']);
+
+        $vars = new stdClass();
+
+        $domain_name = $this->getDomainNameFromService($service);
+
+        $row = $this->getModuleRow($package->module_row);
+        $api = $this->getApi($row->meta->username, $row->meta->password, $row->meta->test_mode == 'true');
+
+        $domain_response = $api->call('searchDomainRequest', [
+            'full_name' => $domain_name
+        ]);
+        $this->logRequest($api);
+
+        if ($domain_response->getCode() != 0 || is_null($domain_response->getData()['results'])) {
+            $this->Input->setErrors([
+                'errors' => [
+                    Language::_('OpenProvider.!error.domain.not_exist', true)
+                ]
+            ]);
+            return false;
+        }
+
+        $op_domain = $domain_response->getData()['results'][0];
+
+        if ($post) {
+            $vars = (object) $post;
+
+            if (isset($post['generate-new-epp']) && $post['generate-new-epp'] == 'true') {
+                $reset_auth_code_response = $api->call('resetAuthCodeDomainRequest', [
+                    'id' => $op_domain['id'],
+                ]);
+                $this->logRequest($api);
+
+                if ($reset_auth_code_response->getCode() != 0) {
+                    $this->Input->setErrors([
+                        'errors' => [
+                            $reset_auth_code_response->getMessage() . ': ' . $reset_auth_code_response->getCode(),
+                        ]
+                    ]);
+                } else {
+                    $op_domain['auth_code'] = $reset_auth_code_response->getData()['auth_code'];
+                }
+            }
+        }
+
+        if (isset($op_domain['auth_code']) && $op_domain['auth_code']) {
+            $vars->epp = $op_domain['auth_code'];
+        }
+
         $this->view->set('vars', $vars);
 
         return $this->view->fetch();
@@ -1769,6 +1918,20 @@ class Openprovider extends Module
         }
 
         return true;
+    }
+
+    /**
+     * @param stdClass $service
+     * @return string domain name. Return empty string if domain property not exists in $service
+     */
+    private function getDomainNameFromService(stdClass $service) {
+        foreach ($service->fields as $field) {
+            if ($field->key == 'domain') {
+                return $field->value;
+            }
+        }
+
+        return '';
     }
 
     /**
