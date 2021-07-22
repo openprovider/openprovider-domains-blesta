@@ -947,7 +947,13 @@ class Openprovider extends Module
 
         // We cant create domain and contacts without client information
         if (!$client) {
-            throw new Exception(Language::_('OpenProvider.!error.client.not_exist', true));
+            $this->Input->setErrors([
+                'errors' => [
+                    Language::_('OpenProvider.!error.client.not_exist', true)
+                ]
+            ]);
+
+            return [];
         }
 
         // taking phone number
@@ -955,7 +961,13 @@ class Openprovider extends Module
         $contact_number  = $contact_numbers[0]->number ?? null;
 
         if (is_null($contact_number)) {
-            throw new Exception('OpenProvider.!error.client.phone_not_exist');
+            $this->Input->setErrors([
+                'errors' => [
+                    Language::_('OpenProvider.!error.client.phone_not_exist', true)
+                ]
+            ]);
+
+            return [];
         }
 
         // processing phone to correct format
@@ -977,7 +989,13 @@ class Openprovider extends Module
                 strpos($e->getMessage(), ' could not be splitted into street name and house number.') !== false;
 
             if (!$should_use_full_address) {
-                throw $e;
+                $this->Input->setErrors([
+                    'errors' => [
+                        $e->getMessage()
+                    ]
+                ]);
+
+                return [];
             }
 
             $contact_street = $contact_full_address;
@@ -1297,10 +1315,13 @@ class Openprovider extends Module
         $this->logRequest($api);
 
         if ($op_domain_request->getCode() != 0 || count($op_domain_request->getData()['results']) < 1) {
-            $vars->error = Language::_('OpenProvider.!error.domain.not_exist', true);
-            $this->view->set('vars', $vars);
+            $this->Input->setErrors([
+                'errors' => [
+                    Language::_('OpenProvider.!error.domain.not_exist', true)
+                ]
+            ]);
 
-            return $this->view->fetch();
+            return false;
         }
 
         $op_domain = $op_domain_request->getData()['results'][0];
@@ -1361,10 +1382,13 @@ class Openprovider extends Module
         $domain_name = $this->getDomainNameFromService($service);
 
         if (empty($domain_name)) {
-            $vars->error = Language::_('OpenProvider.!error.domain.name_undefined', true);
-            $this->view->set('vars', $vars);
+            $this->Input->setErrors([
+                'errors' => [
+                    Language::_('OpenProvider.!error.domain.name_undefined', true)
+                ]
+            ]);
 
-            return $this->view->fetch();
+            return false;
         }
 
         $row = $this->getModuleRow($package->module_row);
@@ -1377,10 +1401,13 @@ class Openprovider extends Module
         $this->logRequest($api);
 
         if ($domain_request->getCode() != 0 || count($domain_request->getData()['results']) == 0) {
-            $vars->error = Language::_('OpenProvider.!error.domain.not_exist', true);
-            $this->view->set('vars', $vars);
+            $this->Input->setErrors([
+                'errors' => [
+                    Language::_('OpenProvider.!error.domain.not_exist', true)
+                ]
+            ]);
 
-            return $this->view->fetch();
+            return false;
         }
 
         // Getting domain contacts from openprovider
@@ -1505,6 +1532,7 @@ class Openprovider extends Module
                     Language::_('OpenProvider.!error.domain.not_exist', true)
                 ]
             ]);
+
             return false;
         }
 
@@ -1812,11 +1840,23 @@ class Openprovider extends Module
             $this->splitDomainName($domain)
         ];
 
-        $response = $api->call('checkDomainRequest', ['domains' => $args])->getData();
+        $check_domain_response = $api->call('checkDomainRequest', ['domains' => $args]);
 
         $this->logRequest($api);
 
-        return $response['results'][0]['status'] == 'free';
+        if ($check_domain_response->getCode() != 0 || is_null($check_domain_response->getData()['results'])) {
+            $this->Input->setErrors([
+                'errors' => [
+                    $check_domain_response->getMessage() . ': ' . $check_domain_response->getCode()
+                ]
+            ]);
+
+            return false;
+        }
+
+        $check_domain_status = $check_domain_response->getData()['results'][0]['status'];
+
+        return $check_domain_status == 'free';
     }
 
     /**
