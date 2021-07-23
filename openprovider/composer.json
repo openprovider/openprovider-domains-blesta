@@ -2,6 +2,7 @@
     "name": "openprovider/openprovider-domains-blesta",
     "description": "Blesta module by OpenProvider",
     "type": "blesta-module",
+    "license": "proprietary",
     "require": {
         "php": ">=7.2",
         "blesta/composer-installer": "~1.0",
