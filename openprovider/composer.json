@@ -8,8 +8,7 @@
         "openprovider/rest-client-php": "dev-v1beta",
         "phpdocumentor/reflection-docblock": "^5.2",
         "symfony/serializer": "^5.2",
-        "symfony/property-access": "^5.2",
-        "brick/phonenumber": "^0.2.2"
+        "symfony/property-access": "^5.2"
     },
     "repositories": [
         {

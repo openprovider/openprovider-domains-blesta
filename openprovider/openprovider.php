@@ -554,7 +554,11 @@ class Openprovider extends Module
         $is_service_domain = $package->meta->type == 'domain';
         $use_module        = isset($vars['use_module']) && $vars['use_module'] == 'true';
 
-        if ($is_service_domain) {
+        if (isset($vars['service_id']) && !empty($vars['service_id'])) {
+            $vars = array_merge($vars, $this->getServiceFields($vars['service_id']));
+        }
+
+        if ($is_service_domain && isset($vars['domain'])) {
             $splitted_domain_name = $this->splitDomainName($vars['domain']);
             $tld                  = '.' . $splitted_domain_name['extension'];
         }
@@ -570,8 +574,6 @@ class Openprovider extends Module
 
         // if method use module
         if ($use_module) {
-            $vars = array_merge($vars, $this->getServiceFields($vars['service_id']));
-
             $this->createDomainInOp($row, $vars, $package);
         }
 
@@ -941,7 +943,6 @@ class Openprovider extends Module
         }
 
         Loader::load(__DIR__ . DS . 'helpers' . DS . 'address_splitter.php');
-        Loader::load(__DIR__ . DS . 'helpers' . DS . 'phone_analyzer.php');
 
         $client = $this->Clients->get($vars['client_id']);
 
@@ -971,9 +972,9 @@ class Openprovider extends Module
         }
 
         // processing phone to correct format
-        $contact_number = PhoneAnalyzer::makePhoneCorrectFormat($contact_number, $client->country);
+        $contact_number = $this->formatPhone($contact_number, $client->country);
         if ($contact_number) {
-            $phone = PhoneAnalyzer::makePhoneArray($contact_number);
+            $phone = $this->makePhoneArray($contact_number);
         }
 
         // processing address
@@ -1968,13 +1969,16 @@ class Openprovider extends Module
      */
     private function getCustomerForOpFromArray(array $customer_array): array
     {
+        if (!isset($this->Contacts)) {
+            Loader::loadModels($this, ['Contacts']);
+        }
+
         Loader::load(__DIR__ . DS . 'helpers' . DS . 'address_splitter.php');
-        Loader::load(__DIR__ . DS . 'helpers' . DS . 'phone_analyzer.php');
 
         // processing phone to correct format
-        $contact_number = PhoneAnalyzer::makePhoneCorrectFormat($customer_array['phone_number'], $customer_array['country']);
+        $contact_number = $this->formatPhone($customer_array['phone_number'], $customer_array['country']);
         if ($contact_number) {
-            $phone = PhoneAnalyzer::makePhoneArray($contact_number);
+            $phone = $this->makePhoneArray($contact_number);
         }
 
         // processing address
@@ -2038,6 +2042,45 @@ class Openprovider extends Module
         }
 
         return '';
+    }
+
+    /**
+     * Make array with partials of phone number. Phone number should be +NNN.NNNNNNNNNN format
+     *
+     * @param $phone
+     *
+     * @return array [ 'area_code', 'country_code', 'subscriber_number' ]
+     */
+    private function makePhoneArray($phone): array
+    {
+        $pos              = strpos($phone, '.');
+        $area_code_length = 3;
+
+        $country_code      = substr($phone, 0, $pos);
+        $area_code         = substr($phone, $pos + 1, $area_code_length);
+        $subscriber_number = substr($phone, $pos + 1 + $area_code_length);
+
+        return [
+            'country_code'      => $country_code,
+            'area_code'         => $area_code,
+            'subscriber_number' => $subscriber_number,
+        ];
+    }
+
+    /**
+     * Formats a phone number into +NNN.NNNNNNNNNN
+     *
+     * @param string $number The phone number
+     * @param string $country The ISO 3166-1 alpha2 country code
+     * @return string The number in +NNN.NNNNNNNNNN
+     */
+    private function formatPhone($number, $country)
+    {
+        if (!isset($this->Contacts)) {
+            Loader::loadModels($this, ['Contacts']);
+        }
+
+        return $this->Contacts->intlNumber($number, $country, '.');
     }
 
     /**
