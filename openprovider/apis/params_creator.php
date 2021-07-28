@@ -37,49 +37,27 @@ class ParamsCreator
             return $args;
         }
 
-        $idn = new idna_convert();
-
         if (isset($args['domain']['name']) && isset($args['domain']['extension'])) {
-            if (!preg_match('//u', $args['domain']['name'])) {
-                $args['domain']['name'] = utf8_encode($args['domain']['name']);
-            }
-
-            $args['domain']['name'] = $idn->encode($args['domain']['name']);
+            $args['domain']['name'] = $this->idnEncode($args['domain']['name']);
         } elseif (isset($args['name_pattern'])) {
             $namePatternArr = explode('.', $args['name_pattern'], 2);
-            $tmpDomainName = $namePatternArr[0];
+            $domainName = $namePatternArr[0];
 
-            if (!preg_match('//u', $tmpDomainName)) {
-                $tmpDomainName = utf8_encode($tmpDomainName);
-            }
+            $encodedDomainName = $this->idnEncode($domainName);
 
-            $tmpDomainName = $idn->encode($tmpDomainName);
-
-            $args['name_pattern'] = $tmpDomainName . '.' . $namePatternArr[1];
+            $args['name_pattern'] = $encodedDomainName . '.' . $namePatternArr[1];
         } elseif (isset($args['name']) && !is_array($args['name'])) {
-            if (!preg_match('//u', $args['name'])) {
-                $args['name'] = utf8_encode($args['name']);
-            }
-
-            $args['name'] = $idn->encode($args['name']);
+            $args['name'] = $this->idnEncode($args['name']);
         } elseif (isset($args['full_name'])) {
             $namePatternArr = explode('.', $args['full_name'], 2);
-            $tmpDomainName = $namePatternArr[0];
+            $domainName = $namePatternArr[0];
 
-            if (!preg_match('//u', $tmpDomainName)) {
-                $tmpDomainName = utf8_encode($tmpDomainName);
-            }
+            $encodedDomainName = $this->idnEncode($domainName);
 
-            $tmpDomainName = $idn->encode($tmpDomainName);
-
-            $args['full_name'] = $tmpDomainName . '.' . $namePatternArr[1];
+            $args['full_name'] = $encodedDomainName . '.' . $namePatternArr[1];
         } elseif (isset($args['domains']) && is_array($args['domains'])) {
             foreach ($args['domains'] as $index => $domain) {
-                if (!preg_match('//u', $domain['name'])) {
-                    $domain['name'] = utf8_encode($domain['name']);
-                }
-
-                $args['domains'][$index]['name'] = $idn->encode($domain['name']);
+                $args['domains'][$index]['name'] = $this->idnEncode($domain['name']);
             }
         }
 
@@ -237,5 +215,20 @@ class ParamsCreator
         }
 
         return $paramTags;
+    }
+
+    /**
+     * @param string $domainName
+     * @return string encoded domain name with punycode
+     */
+    private function idnEncode(string $domainName): string
+    {
+        $idn = new idna_convert();
+        $encodedDomainName = $domainName;
+        if (!preg_match('//u', $domainName)) {
+            $encodedDomainName = utf8_encode($domainName);
+        }
+
+        return $idn->encode($encodedDomainName);
     }
 }
