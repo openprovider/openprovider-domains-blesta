@@ -99,12 +99,14 @@ class OpenProviderApi
             $service->getConfig()->setAccessToken($this->api_config->getToken());
         }
 
+        $modifiedArgs = $this->params_creator->modifyArgsIfDomainIdn($args);
+
         $this->last_request = new LastRequest();
-        $this->last_request->setArgs($args);
+        $this->last_request->setArgs($modifiedArgs);
         $this->last_request->setCommand($cmd);
 
         try {
-            $requestParameters = $this->params_creator->createParameters($args, $service, $apiMethod);
+            $requestParameters = $this->params_creator->createParameters($modifiedArgs, $service, $apiMethod);
             $reply = $service->$apiMethod(...$requestParameters);
         } catch (\Exception $e) {
             $responseData = $this->serializer->normalize(

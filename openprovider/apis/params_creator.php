@@ -2,6 +2,8 @@
 
 use phpDocumentor\Reflection\DocBlockFactory;
 
+require_once __DIR__ . DS . 'idna_convert.php';
+
 class ParamsCreator
 {
     const NO_CLASS = 'no class';
@@ -23,6 +25,65 @@ class ParamsCreator
         return in_array('body', $namesOfArgs) ?
             $this->createParametersPostPut($args, $client, $method) :
             $this->createParametersGetDelete($args, $client, $method);
+    }
+
+    /**
+     * @param array $args
+     * @return array with formatted domain name by idn converter
+     */
+    public function modifyArgsIfDomainIdn(array $args): array
+    {
+        if (empty($args)) {
+            return $args;
+        }
+
+        $idn = new idna_convert();
+
+        if (isset($args['domain']['name']) && isset($args['domain']['extension'])) {
+            if (!preg_match('//u', $args['domain']['name'])) {
+                $args['domain']['name'] = utf8_encode($args['domain']['name']);
+            }
+
+            $args['domain']['name'] = $idn->encode($args['domain']['name']);
+        } elseif (isset($args['name_pattern'])) {
+            $namePatternArr = explode('.', $args['name_pattern'], 2);
+            $tmpDomainName = $namePatternArr[0];
+
+            if (!preg_match('//u', $tmpDomainName)) {
+                $tmpDomainName = utf8_encode($tmpDomainName);
+            }
+
+            $tmpDomainName = $idn->encode($tmpDomainName);
+
+            $args['name_pattern'] = $tmpDomainName . '.' . $namePatternArr[1];
+        } elseif (isset($args['name']) && !is_array($args['name'])) {
+            if (!preg_match('//u', $args['name'])) {
+                $args['name'] = utf8_encode($args['name']);
+            }
+
+            $args['name'] = $idn->encode($args['name']);
+        } elseif (isset($args['full_name'])) {
+            $namePatternArr = explode('.', $args['full_name'], 2);
+            $tmpDomainName = $namePatternArr[0];
+
+            if (!preg_match('//u', $tmpDomainName)) {
+                $tmpDomainName = utf8_encode($tmpDomainName);
+            }
+
+            $tmpDomainName = $idn->encode($tmpDomainName);
+
+            $args['full_name'] = $tmpDomainName . '.' . $namePatternArr[1];
+        } elseif (isset($args['domains']) && is_array($args['domains'])) {
+            foreach ($args['domains'] as $index => $domain) {
+                if (!preg_match('//u', $domain['name'])) {
+                    $domain['name'] = utf8_encode($domain['name']);
+                }
+
+                $args['domains'][$index]['name'] = $idn->encode($domain['name']);
+            }
+        }
+
+        return $args;
     }
 
     /**
