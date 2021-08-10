@@ -1091,7 +1091,7 @@ class Openprovider extends Module
      */
     public function getExpirationDate($service, $format = 'Y-m-d H:i:s')
     {
-        $domain_name = $this->getDomainNameFromService($service);
+        $domain_name = $this->getServiceDomain($service);
         $module_row_id = $service->module_row_id ?? null;
 
         $row = $this->getModuleRow($module_row_id);
@@ -1293,7 +1293,7 @@ class Openprovider extends Module
         array $files = null
     )
     {
-        $domain_name = $this->getDomainNameFromService($service);
+        $domain_name = $this->getServiceDomain($service);
 
         // TODO: if domain pending or suspended return false to make this page unavailable
         $this->view = new View($view, 'default');
@@ -1380,7 +1380,7 @@ class Openprovider extends Module
         $vars = new stdClass();
 
         // getting domain to check it exists
-        $domain_name = $this->getDomainNameFromService($service);
+        $domain_name = $this->getServiceDomain($service);
 
         if (empty($domain_name)) {
             $this->Input->setErrors([
@@ -1517,7 +1517,7 @@ class Openprovider extends Module
 
         $vars = new stdClass();
 
-        $domain_name = $this->getDomainNameFromService($service);
+        $domain_name = $this->getServiceDomain($service);
 
         $row = $this->getModuleRow($package->module_row);
         $api = $this->getApi($row->meta->username, $row->meta->password, $row->meta->test_mode == 'true');
@@ -2034,14 +2034,17 @@ class Openprovider extends Module
      * @param stdClass $service
      * @return string domain name. Return empty string if domain property not exists in $service
      */
-    private function getDomainNameFromService(stdClass $service) {
-        foreach ($service->fields as $field) {
-            if ($field->key == 'domain') {
-                return $field->value;
+    public function getServiceDomain(stdClass $service): string
+    {
+        if (isset($service->fields)) {
+            foreach ($service->fields as $field) {
+                if ($field->key == 'domain') {
+                    return $field->value;
+                }
             }
         }
 
-        return '';
+        return $this->getServiceName($service);
     }
 
     /**

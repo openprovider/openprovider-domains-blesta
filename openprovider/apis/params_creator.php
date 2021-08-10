@@ -39,26 +39,36 @@ class ParamsCreator
 
         if (isset($args['domain']['name']) && isset($args['domain']['extension'])) {
             $args['domain']['name'] = $this->idnEncode($args['domain']['name']);
-        } elseif (isset($args['name_pattern'])) {
-            $namePatternArr = explode('.', $args['name_pattern'], 2);
-            $domainName = $namePatternArr[0];
+            $args['domain']['extension'] = $this->idnEncode($args['domain']['extension']);
 
-            $encodedDomainName = $this->idnEncode($domainName);
+            return $args;
+        }
 
-            $args['name_pattern'] = $encodedDomainName . '.' . $namePatternArr[1];
-        } elseif (isset($args['name']) && !is_array($args['name'])) {
+        if (isset($args['name_pattern'])) {
+            $args['name_pattern'] = $this->idnEncode($args['name_pattern']);
+
+            return $args;
+        }
+
+        if (isset($args['name']) && !is_array($args['name'])) {
             $args['name'] = $this->idnEncode($args['name']);
-        } elseif (isset($args['full_name'])) {
-            $namePatternArr = explode('.', $args['full_name'], 2);
-            $domainName = $namePatternArr[0];
 
-            $encodedDomainName = $this->idnEncode($domainName);
+            return $args;
+        }
 
-            $args['full_name'] = $encodedDomainName . '.' . $namePatternArr[1];
-        } elseif (isset($args['domains']) && is_array($args['domains'])) {
+        if (isset($args['full_name'])) {
+            $args['full_name'] = $this->idnEncode($args['full_name']);
+
+            return $args;
+        }
+
+        if (isset($args['domains']) && is_array($args['domains'])) {
             foreach ($args['domains'] as $index => $domain) {
                 $args['domains'][$index]['name'] = $this->idnEncode($domain['name']);
+                $args['domains'][$index]['extension'] = $this->idnEncode($domain['extension']);
             }
+
+            return $args;
         }
 
         return $args;
