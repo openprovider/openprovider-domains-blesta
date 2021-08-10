@@ -2,8 +2,6 @@
 
 use phpDocumentor\Reflection\DocBlockFactory;
 
-require_once __DIR__ . DS . 'idna_convert.php';
-
 class ParamsCreator
 {
     const NO_CLASS = 'no class';
@@ -233,12 +231,11 @@ class ParamsCreator
      */
     private function idnEncode(string $domainName): string
     {
-        $idn = new idna_convert();
         $encodedDomainName = $domainName;
         if (!preg_match('//u', $domainName)) {
             $encodedDomainName = utf8_encode($domainName);
         }
 
-        return $idn->encode($encodedDomainName);
+        return idn_to_ascii($encodedDomainName);
     }
 }
