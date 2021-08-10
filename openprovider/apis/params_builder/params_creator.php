@@ -26,50 +26,16 @@ class ParamsCreator
     }
 
     /**
-     * @param array $args
-     * @return array with formatted domain name by idn converter
+     * @param string $name
+     * @return string converted from idn to ascii
      */
-    public function modifyArgsIfDomainIdn(array $args): array
+    protected function idnEncode(string $name): string
     {
-        if (empty($args)) {
-            return $args;
+        if (!preg_match('//u', $name)) {
+            $name = utf8_encode($name);
         }
 
-        if (isset($args['domain']['name']) && isset($args['domain']['extension'])) {
-            $args['domain']['name'] = $this->idnEncode($args['domain']['name']);
-            $args['domain']['extension'] = $this->idnEncode($args['domain']['extension']);
-
-            return $args;
-        }
-
-        if (isset($args['name_pattern'])) {
-            $args['name_pattern'] = $this->idnEncode($args['name_pattern']);
-
-            return $args;
-        }
-
-        if (isset($args['name']) && !is_array($args['name'])) {
-            $args['name'] = $this->idnEncode($args['name']);
-
-            return $args;
-        }
-
-        if (isset($args['full_name'])) {
-            $args['full_name'] = $this->idnEncode($args['full_name']);
-
-            return $args;
-        }
-
-        if (isset($args['domains']) && is_array($args['domains'])) {
-            foreach ($args['domains'] as $index => $domain) {
-                $args['domains'][$index]['name'] = $this->idnEncode($domain['name']);
-                $args['domains'][$index]['extension'] = $this->idnEncode($domain['extension']);
-            }
-
-            return $args;
-        }
-
-        return $args;
+        return idn_to_ascii($name);
     }
 
     /**
@@ -223,19 +189,5 @@ class ParamsCreator
         }
 
         return $paramTags;
-    }
-
-    /**
-     * @param string $domainName
-     * @return string encoded domain name with punycode
-     */
-    private function idnEncode(string $domainName): string
-    {
-        $encodedDomainName = $domainName;
-        if (!preg_match('//u', $domainName)) {
-            $encodedDomainName = utf8_encode($domainName);
-        }
-
-        return idn_to_ascii($encodedDomainName);
     }
 }

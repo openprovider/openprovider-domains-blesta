@@ -4,7 +4,7 @@ require_once __DIR__ . DS . 'response.php';
 require_once __DIR__ . DS . 'last_request.php';
 require_once __DIR__ . DS . 'command_mapping.php';
 require_once __DIR__ . DS . 'api_configuration.php';
-require_once __DIR__ . DS . 'params_creator.php';
+require_once __DIR__ . DS . 'params_builder/params_creator_factory.php';
 
 use Openprovider\Api\Rest\Client\Base\Configuration;
 use GuzzleHttp\Client as HttpClient;
@@ -39,9 +39,9 @@ class OpenProviderApi
     private $api_config;
 
     /**
-     * @var ParamsCreator
+     * @var ParamsCreatorFactory
      */
-    private $params_creator;
+    private $params_creator_factory;
 
     /**
      * @var Serializer
@@ -63,7 +63,7 @@ class OpenProviderApi
         $this->configuration = new Configuration();
         $this->command_mapping = new CommandMapping();
         $this->api_config = new ApiConfig();
-        $this->params_creator = new ParamsCreator();
+        $this->params_creator_factory = new ParamsCreatorFactory();
         $this->serializer = new Serializer([new ObjectNormalizer(null, new CamelCaseToSnakeCaseNameConverter())]);
         $this->http_client = new HttpClient([
             'headers' => [
@@ -99,14 +99,13 @@ class OpenProviderApi
             $service->getConfig()->setAccessToken($this->api_config->getToken());
         }
 
-        $modifiedArgs = $this->params_creator->modifyArgsIfDomainIdn($args);
-
         $this->last_request = new LastRequest();
-        $this->last_request->setArgs($modifiedArgs);
+        $this->last_request->setArgs($args);
         $this->last_request->setCommand($cmd);
 
         try {
-            $requestParameters = $this->params_creator->createParameters($modifiedArgs, $service, $apiMethod);
+            $paramsCreator = $this->params_creator_factory->build($cmd);
+            $requestParameters = $paramsCreator->createParameters($args, $service, $apiMethod);
             $reply = $service->$apiMethod(...$requestParameters);
         } catch (\Exception $e) {
             $responseData = $this->serializer->normalize(
