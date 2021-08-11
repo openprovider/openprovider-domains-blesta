@@ -26,6 +26,19 @@ class ParamsCreator
     }
 
     /**
+     * @param string $name
+     * @return string converted from idn to ascii
+     */
+    protected function idnEncode(string $name): string
+    {
+        if (!preg_match('//u', $name)) {
+            $name = utf8_encode($name);
+        }
+
+        return idn_to_ascii($name);
+    }
+
+    /**
      * @param array $args
      * @param mixed $client
      * @param string $method
