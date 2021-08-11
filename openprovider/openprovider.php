@@ -2031,8 +2031,14 @@ class Openprovider extends Module
     }
 
     /**
+     * Registrar modules should use the 'domain' key for their domain field, but if they choose something different,
+     * this method can be overridden to get the domain from the appropriate service field.
+     *
      * @param stdClass $service
+     *
      * @return string domain name. Return empty string if domain property not exists in $service
+     *
+     * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-getServiceDomain($service)
      */
     public function getServiceDomain(stdClass $service): string
     {

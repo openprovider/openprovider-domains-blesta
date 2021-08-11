@@ -2,6 +2,8 @@
 
 use phpDocumentor\Reflection\DocBlockFactory;
 
+require_once __DIR__ . DS . '..' . DS . '..' . DS . 'helpers' . DS . 'idn_encoder.php';
+
 class ParamsCreator
 {
     const NO_CLASS = 'no class';
@@ -27,15 +29,12 @@ class ParamsCreator
 
     /**
      * @param string $name
+     *
      * @return string converted from idn to ascii
      */
     protected function idnEncode(string $name): string
     {
-        if (!preg_match('//u', $name)) {
-            $name = utf8_encode($name);
-        }
-
-        return idn_to_ascii($name);
+        return IdnEncoder::encode($name);
     }
 
     /**
