@@ -23,7 +23,7 @@
         "row": "OpenProvider.config.module.row",
         "rows": "OpenProvider.config.module.rows",
         "group": "OpenProvider.config.module.group",
-        "row_key": "OpenProvider.config.module.row_keys"
+        "row_key": "username"
     },
     "email_tags": {
         "module": [],
