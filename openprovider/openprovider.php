@@ -654,6 +654,16 @@ class Openprovider extends Module
 
         $customer = $this->getCustomerData($vars);
 
+        if (isset($customer['error'])) {
+            $this->Input->setErrors([
+                'errors' => [
+                    $customer['error']
+                ]
+            ]);
+
+            return;
+        }
+
         $additional_data = $this->getAdditionalData($vars);
 
         if (!empty($additional_data['customer_extension_additional_data'])) {
@@ -929,9 +939,8 @@ class Openprovider extends Module
     /**
      * @param array|null $vars
      *
-     * @return array customer data formatted for Openprovider
-     *
-     * @throws Exception
+     * @return array customer data formatted for Openprovider.
+     * Array maybe contain error key, this value store an error message and customer data is empty
      */
     private function getCustomerData(?array $vars = null): array
     {
@@ -948,13 +957,9 @@ class Openprovider extends Module
 
         // We cant create domain and contacts without client information
         if (!$client) {
-            $this->Input->setErrors([
-                'errors' => [
-                    Language::_('OpenProvider.!error.client.not_exist', true)
-                ]
-            ]);
-
-            return [];
+            return [
+                'error' => Language::_('OpenProvider.!error.client.not_exist', true)
+            ];
         }
 
         // taking phone number
@@ -962,13 +967,9 @@ class Openprovider extends Module
         $contact_number  = $contact_numbers[0]->number ?? null;
 
         if (is_null($contact_number)) {
-            $this->Input->setErrors([
-                'errors' => [
-                    Language::_('OpenProvider.!error.client.phone_not_exist', true)
-                ]
-            ]);
-
-            return [];
+            return [
+                'error' => Language::_('OpenProvider.!error.client.phone_not_exist', true)
+            ];
         }
 
         // processing phone to correct format
@@ -990,13 +991,9 @@ class Openprovider extends Module
                 strpos($e->getMessage(), ' could not be splitted into street name and house number.') !== false;
 
             if (!$should_use_full_address) {
-                $this->Input->setErrors([
-                    'errors' => [
-                        $e->getMessage()
-                    ]
-                ]);
-
-                return [];
+                return [
+                    'error' => $e->getMessage()
+                ];
             }
 
             $contact_street = $contact_full_address;
