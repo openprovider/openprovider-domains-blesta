@@ -1,3 +1,17 @@
+<?php if (isset($vars->error) && $vars->error) { ?>
+
+    <section class="error_section">
+        <article class="error_box error">
+            <a href="#" class="close">×</a>
+            <div class="icon-line fa-2x">
+                <i class="fab fa-whmcs fa-fw"></i>
+                <p><?php echo $vars->error ?></p>
+            </div>
+        </article>
+    </section>
+
+<?php } ?>
+
 <?php $this->Form->create(); ?>
 
 <div class="pad">
@@ -19,13 +33,3 @@
 </button>
 
 <?php $this->Form->end(); ?>
-
-<?php
-    if (isset($vars->error) && $vars->error) {
-        echo "
-            <script>
-                $('.alert.alert-success').toggleClass('alert-success alert-danger').text(`{$vars->error}`);
-            </script>
-        ";
-    }
-?>
