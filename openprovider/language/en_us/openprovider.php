@@ -106,3 +106,5 @@ $lang['OpenProvider.!error.passport_series.empty']     = 'This tld require an pa
 $lang['OpenProvider.!error.domain.not_exist']          = 'This domain does not exist in Openprovider.';
 $lang['OpenProvider.!error.domain.contact_support']    = 'Please contact support for domain details.';
 $lang['OpenProvider.!error.domain.name_undefined']     = 'Domain name undefined.';
+
+$lang['OpenProvider.!error.service.domain.status_not_active_in_blesta'] = 'That section is not accessible while the service is not in an Active state.';

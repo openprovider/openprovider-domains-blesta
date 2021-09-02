@@ -1302,6 +1302,12 @@ class Openprovider extends Module
         array $files = null
     )
     {
+        if (!$this->checkIfServiceStatusIssetAndActive($service)) {
+            $this->assignError(Language::_('OpenProvider.!error.service.domain.status_not_active_in_blesta', true));
+
+            return false;
+        }
+
         $domain_name = $this->getServiceDomain($service);
 
         $this->view = new View($view, 'default');
@@ -1331,10 +1337,7 @@ class Openprovider extends Module
             return false;
         }
 
-        if (
-            $this->checkIfDomainDoesNotExistInSearchDomainResponse($op_domain_response) &&
-            $this->checkIfServiceStatusIssetAndActive($service)
-        ) {
+        if ($this->checkIfDomainDoesNotExistInSearchDomainResponse($op_domain_response)) {
             $this->assignError($this->isPageOnClientSide($view) ?
                 Language::_('OpenProvider.!error.domain.contact_support', true) :
                 Language::_('OpenProvider.!error.domain.not_exist', true));
@@ -1384,6 +1387,12 @@ class Openprovider extends Module
         array $files = null
     )
     {
+        if (!$this->checkIfServiceStatusIssetAndActive($service)) {
+            $this->assignError(Language::_('OpenProvider.!error.service.domain.status_not_active_in_blesta', true));
+
+            return false;
+        }
+
         $this->view = new View($view, 'default');
         $this->view->setDefaultView($this->default_module_view_path);
 
@@ -1418,10 +1427,7 @@ class Openprovider extends Module
             return false;
         }
 
-        if (
-            $this->checkIfDomainDoesNotExistInSearchDomainResponse($op_domain_response) &&
-            $this->checkIfServiceStatusIssetAndActive($service)
-        ) {
+        if ($this->checkIfDomainDoesNotExistInSearchDomainResponse($op_domain_response)) {
             $this->assignError($this->isPageOnClientSide($view) ?
                 Language::_('OpenProvider.!error.domain.contact_support', true) :
                 Language::_('OpenProvider.!error.domain.not_exist', true));
@@ -1526,6 +1532,12 @@ class Openprovider extends Module
         array $files = null
     )
     {
+        if (!$this->checkIfServiceStatusIssetAndActive($service)) {
+            $this->assignError(Language::_('OpenProvider.!error.service.domain.status_not_active_in_blesta', true));
+
+            return false;
+        }
+
         $this->view = new View($view, 'default');
         $this->view->setDefaultView($this->default_module_view_path);
 
@@ -1552,10 +1564,7 @@ class Openprovider extends Module
             return false;
         }
 
-        if (
-            $this->checkIfDomainDoesNotExistInSearchDomainResponse($domain_response) &&
-            $this->checkIfServiceStatusIssetAndActive($service)
-        ) {
+        if ($this->checkIfDomainDoesNotExistInSearchDomainResponse($domain_response)) {
             $this->assignError($this->isPageOnClientSide($view) ?
                 Language::_('OpenProvider.!error.domain.contact_support', true) :
                 Language::_('OpenProvider.!error.domain.not_exist', true));
