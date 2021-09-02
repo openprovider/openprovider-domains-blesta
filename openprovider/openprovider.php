@@ -277,7 +277,7 @@ class Openprovider extends Module
      *
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-editModuleRow($module_row,array&$vars)
      */
-    public function editModuleRow($module_row, array &$vars): array
+    public function editModuleRow($module_row, array &$vars)
     {
         $allowed_fields   = ['username', 'password', 'test_mode', 'openprovider_module'];
         $encrypted_fields = ['password'];
