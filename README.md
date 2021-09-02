@@ -1,12 +1,30 @@
-# Openprovider Domains module for Blesta - Beta version
+# Openprovider Domains module for Blesta
 
-Offer your customers almost any TLD, from the most popular to the most exotic, all from one registrar! 
+Offer your customers almost any TLD, from the most popular to the most exotic, at unbeatable prices all from one registrar - [Openprovider](https://www.openprovider.com)
 
-# Getting started
+### Useful features
 
-- Copy the folder `openprovider/` into the `<blesta root>/components/modules/` folder of your Blesta instance
-- Create a (free!) [Openprovider account](https://openprovider.com/) if you haven't already.
-- Navigate to `<blesta root>/components/modules/openprovider/config/openprovider.php`and configure the first array with the TLDs which you would like to support. Check your Openprovider account for a full list of the more than 2800 TLDs available for registration. Please note that in the Beta version of the module, not all TLDs can be automatically registered.
+- End users can manage domain details from the client side without needing any help from the administrator 
+- Administrators can manage domain details from admin side without needing to login to the customer's page 
+- Change domain contact details, e.g. modify whois data 
+- Update nameservers
+- Toggle transfer lock
+- Retrieve or reset domain authcode/transfer code
+
+### Getting started
+
+- Copy the folder `openprovider/` into the `<blesta root>/components/modules/` folder of your Blesta instance.
+- Sign up for a free [Openprovider account](https://cp.openprovider.eu/signup) 
+- Activate the Openprovider registrar module in Blesta, and add your Openprovider credentials 
+- Follow the tutorial for the [Blesta Domain Manager](https://docs.blesta.com/display/user/Domain+Manager)
+
+
+
+### Expanding the list of supported TLDs
+
+- We've included the 100 most popular TLDs in the module. But if you find that you need something else, you can add any TLD supported by Openprovider, provided that it does not require additional data fields (check the [Openprovider Knowledge Base](https://support.openprovider.eu/hc/en-us) to determine if your target TLD needs additional data)
+- If you're interested in offering domains which require additional data, please make an issue in this repository and we'll try to add support as soon as possible.
+- Navigate to `<blesta root>/components/modules/openprovider/config/openprovider.php`and configure the array `OpenProvider.tlds` with the TLDs which you would like to support. Check your Openprovider account for a full list of the more than 2800 TLDs available for registration. 
 
 ```php
 // Allowed tlds
@@ -14,48 +32,9 @@ Configure::set('OpenProvider.tlds', [
     '.com',
     '.nl',
     '.shop', 
-    //add desired TLDs here
+    //...etc
+    // add any missing TLDs here
 ]);
 ```
 
-- Follow the instructions from the Blesta tutorial for [how to sell domains](https://docs.blesta.com/display/user/Selling+Domains#SellingDomains-Installadomainmodule)
-
-- We want the module to reflect your needs and feedback is welcome. Please contact us: **integrations@openprovider.com**
-
-
-## SQL code to create necessary tables for module
-
-It may be helpfully if you have error with tables because they are not exists or broken.
-
-### openprovider_token
-```
-CREATE TABLE `openprovider_token` (
-  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-  `user_hash` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `token` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `until_date` datetime DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `user_hash` (`user_hash`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci
-```
-
-### openprovider_handles
-```
-CREATE TABLE `openprovider_handles` (
-  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-  `handle` varchar(20) COLLATE utf8_unicode_ci NOT NULL,
-  `type` varchar(20) COLLATE utf8_unicode_ci NOT NULL,
-  `service_id` int(10) unsigned NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=54 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci
-```
-
-### openprovider_mapping_service_domain
-```
-CREATE TABLE `openprovider_mapping_service_domain` (
-  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-  `service_id` int(10) unsigned NOT NULL,
-  `domain_id` int(10) unsigned NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci
-```
+- We want the module to reflect your needs and feedback is welcome. Please contact us: integrations@openprovider.com
