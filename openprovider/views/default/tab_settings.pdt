@@ -1,17 +1,3 @@
-<?php if (isset($vars->error) && $vars->error) { ?>
-
-    <section class="error_section">
-        <article class="error_box error">
-            <a href="#" class="close">×</a>
-            <div class="icon-line fa-2x">
-                <i class="fab fa-whmcs fa-fw"></i>
-                <p><?php echo $vars->error ?></p>
-            </div>
-        </article>
-    </section>
-
-<?php } ?>
-
 <div class="pad">
     <?php $this->Form->create(); ?>
 
