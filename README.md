@@ -4,12 +4,14 @@ Offer your customers almost any TLD, from the most popular to the most exotic, a
 
 ### Useful features
 
-- End users can manage domain details from the client side without needing any help from the administrator 
-- Administrators can manage domain details from admin side without needing to login to the customer's page 
-- Change domain contact details, e.g. modify whois data 
-- Update nameservers
-- Toggle transfer lock
-- Retrieve or reset domain authcode/transfer code
+- Create packages to register domains from any of the 2300 TLDs available with an Openprovider account
+- Domain search
+- Automated domain registration and transfer for domains which do not require additional data
+- End users and administrators can seamlessly manage domain details from their respective areas:
+  - Change domain contact details, e.g. modify whois data 
+  - Change nameservers
+  - Toggle domain transfer lock
+  - Retrieve or reset domain authcode/transfer code
 
 ### Getting started
 
