@@ -1272,6 +1272,19 @@ class Openprovider extends Module
     }
 
     /**
+     * result of this method depends on template name.
+     * if template name contains 'client' word, it means template for client side
+     *
+     * @param string $view_name
+     *
+     * @return bool true if page renders on client side
+     */
+    private function pageOnClientSide(string $view_name): bool
+    {
+        return strpos($view_name, 'client') !== false;
+    }
+
+    /**
      * @poram string $view view's name
      * @param stdClass $package package row from database
      * @param stdClass $service service row from database
@@ -1290,9 +1303,6 @@ class Openprovider extends Module
         array $files = null
     )
     {
-        // true if view for client
-        $page_on_client_side = strpos($view, 'client') !== false;
-
         $domain_name = $this->getServiceDomain($service);
 
         $this->view = new View($view, 'default');
@@ -1329,7 +1339,7 @@ class Openprovider extends Module
             isset($service->status) &&
             $service->status == 'active'
         ) {
-            $error_message = $page_on_client_side ?
+            $error_message = $this->pageOnClientSide($view) ?
                 Language::_('OpenProvider.!error.domain.contact_support', true) :
                 Language::_('OpenProvider.!error.domain.not_exist', true);
 
@@ -1378,9 +1388,6 @@ class Openprovider extends Module
         array $files = null
     )
     {
-        // true if view for client
-        $page_on_client_side = strpos($view, 'client') !== false;
-
         $this->view = new View($view, 'default');
         $this->view->setDefaultView($this->default_module_view_path);
 
@@ -1420,7 +1427,7 @@ class Openprovider extends Module
             isset($service->status) &&
             $service->status == 'active'
         ) {
-            $error_message = $page_on_client_side ?
+            $error_message = $this->pageOnClientSide($view) ?
                 Language::_('OpenProvider.!error.domain.contact_support', true) :
                 Language::_('OpenProvider.!error.domain.not_exist', true);
 
@@ -1524,9 +1531,6 @@ class Openprovider extends Module
         array $files = null
     )
     {
-        // true if view for client
-        $page_on_client_side = strpos($view, 'client') !== false;
-
         $this->view = new View($view, 'default');
         $this->view->setDefaultView($this->default_module_view_path);
 
@@ -1560,7 +1564,7 @@ class Openprovider extends Module
             isset($service->status) &&
             $service->status == 'active'
         ) {
-            $error_message = $page_on_client_side ?
+            $error_message = $this->pageOnClientSide($view) ?
                 Language::_('OpenProvider.!error.domain.contact_support', true) :
                 Language::_('OpenProvider.!error.domain.not_exist', true);
 
