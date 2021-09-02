@@ -1317,20 +1317,7 @@ class Openprovider extends Module
         $domain_request_failed = $op_domain_request->getCode() != 0;
 
         if ($domain_request_failed) {
-            if ($page_on_client_side) {
-                $this->Input->setErrors([
-                    'errors' => [
-                        $op_domain_request->getMessage()
-                    ]
-                ]);
-
-                return false;
-            }
-
-            $vars->error = $op_domain_request->getMessage();
-            $this->view->set('vars', $vars);
-
-            return $this->view->fetch();
+            return $this->showErrorOnClientOrAdminSide($op_domain_request->getMessage(), $page_on_client_side);
         }
 
         $domain_does_not_exist =
@@ -1342,20 +1329,11 @@ class Openprovider extends Module
             isset($service->status) &&
             $service->status == 'active'
         ) {
-            if ($page_on_client_side) {
-                $this->Input->setErrors([
-                    'errors' => [
-                        Language::_('OpenProvider.!error.domain.contact_support', true)
-                    ]
-                ]);
+            $error_message = $page_on_client_side ?
+                Language::_('OpenProvider.!error.domain.contact_support', true) :
+                Language::_('OpenProvider.!error.domain.not_exist', true);
 
-                return false;
-            }
-
-            $vars->error = Language::_('OpenProvider.!error.domain.not_exist', true);
-            $this->view->set('vars', $vars);
-
-            return $this->view->fetch();
+            return $this->showErrorOnClientOrAdminSide($error_message, $page_on_client_side);
         }
 
         $op_domain = $op_domain_request->getData()['results'][0];
@@ -1366,20 +1344,11 @@ class Openprovider extends Module
             $response = $this->modifyNameServersInOpenProvider($api, $op_domain['id'], $post['ns']);
 
             if ($response->getCode() != 0) {
-                if ($page_on_client_side) {
-                    $this->Input->setErrors([
-                        'errors' => [
-                            $response->getMessage()
-                        ]
-                    ]);
-
-                    return false;
+                if (!$page_on_client_side) {
+                    return $this->showErrorOnAdminSide($response->getMessage(), $vars);
                 }
 
-                $vars->error = $response->getMessage();
-                $this->view->set('vars', $vars);
-
-                return $this->view->fetch();
+                $this->showErrorOnClientSide($response->getMessage());
             }
         } else {
             $vars->ns = array_map(function ($name_server) {
@@ -1427,13 +1396,7 @@ class Openprovider extends Module
         $domain_name = $this->getServiceDomain($service);
 
         if (empty($domain_name)) {
-            $this->Input->setErrors([
-                'errors' => [
-                    Language::_('OpenProvider.!error.domain.name_undefined', true)
-                ]
-            ]);
-
-            return false;
+            return $this->showErrorOnAdminSide(Language::_('OpenProvider.!error.domain.name_undefined', true));
         }
 
         $row = $this->getModuleRow($package->module_row);
@@ -1448,20 +1411,7 @@ class Openprovider extends Module
         $domain_request_failed = $domain_request->getCode() != 0;
 
         if ($domain_request_failed) {
-            if ($page_on_client_side) {
-                $this->Input->setErrors([
-                    'errors' => [
-                        $domain_request->getMessage()
-                    ]
-                ]);
-
-                return false;
-            }
-
-            $vars->error = $domain_request->getMessage();
-            $this->view->set('vars', $vars);
-
-            return $this->view->fetch();
+            return $this->showErrorOnClientOrAdminSide($domain_request->getMessage(), $page_on_client_side);
         }
 
         $domain_does_not_exist =
@@ -1473,20 +1423,11 @@ class Openprovider extends Module
             isset($service->status) &&
             $service->status == 'active'
         ) {
-            if ($page_on_client_side) {
-                $this->Input->setErrors([
-                    'errors' => [
-                        Language::_('OpenProvider.!error.domain.contact_support', true)
-                    ]
-                ]);
+            $error_message = $page_on_client_side ?
+                Language::_('OpenProvider.!error.domain.contact_support', true) :
+                Language::_('OpenProvider.!error.domain.not_exist', true);
 
-                return false;
-            }
-
-            $vars->error = Language::_('OpenProvider.!error.domain.not_exist', true);
-            $this->view->set('vars', $vars);
-
-            return $this->view->fetch();
+            return $this->showErrorOnClientOrAdminSide($error_message, $page_on_client_side);
         }
 
         // Getting domain contacts from openprovider
@@ -1611,20 +1552,7 @@ class Openprovider extends Module
         $domain_request_failed = $domain_response->getCode() != 0;
 
         if ($domain_request_failed) {
-            if ($page_on_client_side) {
-                $this->Input->setErrors([
-                    'errors' => [
-                        $domain_response->getMessage()
-                    ]
-                ]);
-
-                return false;
-            }
-
-            $vars->error = $domain_response->getMessage();
-            $this->view->set('vars', $vars);
-
-            return $this->view->fetch();
+            return $this->showErrorOnClientOrAdminSide($domain_response->getMessage(), $page_on_client_side);
         }
 
         $domain_does_not_exist =
@@ -1636,20 +1564,11 @@ class Openprovider extends Module
             isset($service->status) &&
             $service->status == 'active'
         ) {
-            if ($page_on_client_side) {
-                $this->Input->setErrors([
-                    'errors' => [
-                        Language::_('OpenProvider.!error.domain.contact_support', true)
-                    ]
-                ]);
+            $error_message = $page_on_client_side ?
+                Language::_('OpenProvider.!error.domain.contact_support', true) :
+                Language::_('OpenProvider.!error.domain.not_exist', true);
 
-                return false;
-            }
-
-            $vars->error = Language::_('OpenProvider.!error.domain.not_exist', true);
-            $this->view->set('vars', $vars);
-
-            return $this->view->fetch();
+            return $this->showErrorOnClientOrAdminSide($error_message, $page_on_client_side);
         }
 
         $op_domain = $domain_response->getData()['results'][0];
@@ -1669,11 +1588,8 @@ class Openprovider extends Module
 
                 if ($reset_auth_code_response->getCode() != 0) {
                     if ($page_on_client_side) {
-                        $this->Input->setErrors([
-                            'errors' => [
-                                $reset_auth_code_response->getMessage() . ': ' . $reset_auth_code_response->getCode()
-                            ]
-                        ]);
+                        $this->showErrorOnClientSide(
+                            $reset_auth_code_response->getMessage() . ': ' . $reset_auth_code_response->getCode());
                     }
 
                     $vars->error = $reset_auth_code_response->getMessage() . ': ' . $reset_auth_code_response->getCode();
@@ -1693,11 +1609,8 @@ class Openprovider extends Module
 
                 if ($update_is_locked_domain_response->getCode() != 0) {
                     if ($page_on_client_side) {
-                        $this->Input->setErrors([
-                            'errors' => [
-                                $update_is_locked_domain_response->getMessage() . ': ' . $update_is_locked_domain_response->getCode()
-                            ]
-                        ]);
+                        $this->showErrorOnClientSide(
+                            $update_is_locked_domain_response->getMessage() . ': ' . $update_is_locked_domain_response->getCode());
                     }
 
                     $vars->error = $update_is_locked_domain_response->getMessage() . ': ' . $update_is_locked_domain_response->getCode();
@@ -1706,43 +1619,76 @@ class Openprovider extends Module
                 }
             }
         }
-        
+
         $this->view->set('vars', $vars);
 
         return $this->view->fetch();
     }
 
     /**
-     * if you want to use this method you need to initiate following variables:
-     * * $this->Input;
-     * * $this->view; // with already configured view template
+     * $this->Input should be initialized for this method to be executed correctly
      *
      * @param string $error_message
-     * @param bool $show_on_client_side
      *
-     * @return false|string
+     * @return bool false
+     */
+    private function showErrorOnClientSide(string $error_message): bool
+    {
+        $this->Input->setErrors([
+            'errors' => [
+                $error_message,
+            ]
+        ]);
+
+        return false;
+    }
+
+    /**
+     * $this->view should be initialized for this method otherwise it returns empty string
+     *
+     * @param string $error_message
+     * @param object|null $vars
+     *
+     * @return string HTML to render on page.
+     * HTML template should have $vars->error block to display error message.
      *
      * @throws Exception
      */
-    private function showError(string $error_message, bool $show_on_client_side = true)
+    private function showErrorOnAdminSide(string $error_message, object $vars = null): string
     {
-        if ($show_on_client_side) {
-            $this->Input->setErrors([
-                'errors' => [
-                    $error_message
-                ]
-            ]);
-
-
-            return false;
+        if (!isset($this->view)) {
+            return '';
         }
 
-        $vars = new stdClass();
+        if (is_null($vars)) {
+            $vars = new stdClass();
+        }
 
         $vars->error = $error_message;
         $this->view->set('vars', $vars);
 
         return $this->view->fetch();
+    }
+
+    /**
+     * Method defines which method [showErrorOnAdminSide|showErrorOnClientSide] will execute.
+     * Depends on $is_client_side (true by default)
+     *
+     * @param string $error_message
+     * @param bool $is_client_side
+     * @param object|null $vars
+     *
+     * @return bool|string
+     *
+     * @throws Exception
+     */
+    private function showErrorOnClientOrAdminSide(string $error_message, bool $is_client_side = true, object $vars = null)
+    {
+        if ($is_client_side) {
+            return $this->showErrorOnClientSide($error_message);
+        }
+
+        return $this->showErrorOnAdminSide($error_message, $vars);
     }
 
     /**
