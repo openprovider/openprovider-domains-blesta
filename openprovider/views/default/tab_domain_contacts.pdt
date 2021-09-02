@@ -1,7 +1,3 @@
-<?php
-        echo $this->Html->ifSet( $vars->debug );
-        ?>
-
 <?php $this->Form->create(); ?>
 
 <div class="pad">
@@ -28,23 +24,13 @@
             </ul>
 
     <?php } ?>
+
 </div>
 <button class="btn btn-light float-right" type="submit">
 <i class="fas fa-edit"></i> <?php $this->_('OpenProvider.tab_domain_contacts.field_submit'); ?>
 </button>
 
 <?php $this->Form->end(); ?>
-
-<?php
-    if (isset($vars->error) && $vars->error) {
-        echo "
-            <script>
-                $('.alert.alert-success').toggleClass('alert-success alert-danger').text(`{$vars->error}`);
-            </script>
-        ";
-    }
-?>
-
 <style>
     .input-block-level {
         display: block;

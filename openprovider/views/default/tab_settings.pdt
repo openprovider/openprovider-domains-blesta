@@ -1,7 +1,3 @@
-<?php
-        echo $this->Html->ifSet( $vars->debug );
-        ?>
-
 <div class="pad">
     <?php $this->Form->create(); ?>
 

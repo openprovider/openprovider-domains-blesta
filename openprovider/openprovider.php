@@ -277,7 +277,7 @@ class Openprovider extends Module
      *
      * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-editModuleRow($module_row,array&$vars)
      */
-    public function editModuleRow($module_row, array &$vars): array
+    public function editModuleRow($module_row, array &$vars)
     {
         $allowed_fields   = ['username', 'password', 'test_mode', 'openprovider_module'];
         $encrypted_fields = ['password'];
@@ -1272,6 +1272,18 @@ class Openprovider extends Module
     }
 
     /**
+     * Checks if page is rendered on client side.
+     *
+     * @param string $view_name
+     *
+     * @return bool
+     */
+    private function isPageOnClientSide(string $view_name): bool
+    {
+        return strpos($view_name, 'client') !== false;
+    }
+
+    /**
      * @poram string $view view's name
      * @param stdClass $package package row from database
      * @param stdClass $service service row from database
@@ -1290,9 +1302,14 @@ class Openprovider extends Module
         array $files = null
     )
     {
+        if (!$this->checkIfServiceStatusIssetAndActive($service)) {
+            $this->assignError(Language::_('OpenProvider.!error.service.domain.status_not_active_in_blesta', true));
+
+            return false;
+        }
+
         $domain_name = $this->getServiceDomain($service);
 
-        // TODO: if domain pending or suspended return false to make this page unavailable
         $this->view = new View($view, 'default');
         $this->view->setDefaultView($this->default_module_view_path);
 
@@ -1309,20 +1326,26 @@ class Openprovider extends Module
             'full_name' => $domain_name,
         ];
 
-        $op_domain_request = $api->call('searchDomainRequest', $args);
+        $op_domain_response = $api->call('searchDomainRequest', $args);
         $this->logRequest($api);
 
-        if ($op_domain_request->getCode() != 0 || count($op_domain_request->getData()['results']) < 1) {
-            $this->Input->setErrors([
-                'errors' => [
-                    Language::_('OpenProvider.!error.domain.not_exist', true)
-                ]
-            ]);
+        $domain_request_failed = $op_domain_response->getCode() != 0;
+
+        if ($domain_request_failed) {
+            $this->assignError($op_domain_response->getMessage());
 
             return false;
         }
 
-        $op_domain = $op_domain_request->getData()['results'][0];
+        if ($this->checkIfDomainDoesNotExistInSearchDomainResponse($op_domain_response)) {
+            $this->assignError($this->isPageOnClientSide($view) ?
+                Language::_('OpenProvider.!error.domain.contact_support', true) :
+                Language::_('OpenProvider.!error.domain.not_exist', true));
+
+            return false;
+        }
+
+        $op_domain = $op_domain_response->getData()['results'][0];
 
         if (!empty($post)) {
             $vars = (object) $post;
@@ -1330,13 +1353,10 @@ class Openprovider extends Module
             $response = $this->modifyNameServersInOpenProvider($api, $op_domain['id'], $post['ns']);
 
             if ($response->getCode() != 0) {
-                $vars->error = $response->getMessage() . '. code: ' . $response->getCode();
+                $this->assignError($response->getMessage());
+
+                return $this->render($vars);
             }
-
-            $vars->error = isset($vars->error) ?
-                str_replace('"', '\'', str_replace('`', '\'', $vars->error)) :
-                '';
-
         } else {
             $vars->ns = array_map(function ($name_server) {
                 return $name_server['name'];
@@ -1344,9 +1364,8 @@ class Openprovider extends Module
         }
 
         $this->logRequest($api);
-        $this->view->set('vars', $vars);
 
-        return $this->view->fetch();
+        return $this->render($vars);
     }
 
     /**
@@ -1368,6 +1387,12 @@ class Openprovider extends Module
         array $files = null
     )
     {
+        if (!$this->checkIfServiceStatusIssetAndActive($service)) {
+            $this->assignError(Language::_('OpenProvider.!error.service.domain.status_not_active_in_blesta', true));
+
+            return false;
+        }
+
         $this->view = new View($view, 'default');
         $this->view->setDefaultView($this->default_module_view_path);
 
@@ -1380,11 +1405,7 @@ class Openprovider extends Module
         $domain_name = $this->getServiceDomain($service);
 
         if (empty($domain_name)) {
-            $this->Input->setErrors([
-                'errors' => [
-                    Language::_('OpenProvider.!error.domain.name_undefined', true)
-                ]
-            ]);
+            $this->assignError(Language::_('OpenProvider.!error.domain.name_undefined', true));
 
             return false;
         }
@@ -1393,23 +1414,29 @@ class Openprovider extends Module
         $api = $this->getApi($row->meta->username, $row->meta->password, $row->meta->test_mode == 'true');
 
         // Check domain in Openprovider
-        $domain_request = $api->call('searchDomainRequest', [
+        $op_domain_response = $api->call('searchDomainRequest', [
             'full_name' => $domain_name
         ]);
         $this->logRequest($api);
 
-        if ($domain_request->getCode() != 0 || count($domain_request->getData()['results']) == 0) {
-            $this->Input->setErrors([
-                'errors' => [
-                    Language::_('OpenProvider.!error.domain.not_exist', true)
-                ]
-            ]);
+        $domain_request_failed = $op_domain_response->getCode() != 0;
+
+        if ($domain_request_failed) {
+            $this->assignError($op_domain_response->getMessage());
+
+            return false;
+        }
+
+        if ($this->checkIfDomainDoesNotExistInSearchDomainResponse($op_domain_response)) {
+            $this->assignError($this->isPageOnClientSide($view) ?
+                Language::_('OpenProvider.!error.domain.contact_support', true) :
+                Language::_('OpenProvider.!error.domain.not_exist', true));
 
             return false;
         }
 
         // Getting domain contacts from openprovider
-        $op_domain = $domain_request->getData()['results'][0];
+        $op_domain = $op_domain_response->getData()['results'][0];
 
         $handles = [
             'owner'   => $op_domain['owner_handle'] ?? '',
@@ -1475,16 +1502,15 @@ class Openprovider extends Module
             $result = $this->createOrReuseDomainContactsInOp($api, $op_domain['id'], $handles, $domain_contacts_from_op, $domain_contacts_from_post);
 
             if ($result != 'success') {
-                $vars->error = $result;
+                $this->assignError($result);
             } else {
                 $domain_contacts_from_op = $domain_contacts_from_post;
             }
         }
 
         $vars->domain_contacts = $domain_contacts_from_op;
-        $this->view->set('vars', $vars);
 
-        return $this->view->fetch();
+        return $this->render($vars);
     }
 
     /**
@@ -1506,6 +1532,12 @@ class Openprovider extends Module
         array $files = null
     )
     {
+        if (!$this->checkIfServiceStatusIssetAndActive($service)) {
+            $this->assignError(Language::_('OpenProvider.!error.service.domain.status_not_active_in_blesta', true));
+
+            return false;
+        }
+
         $this->view = new View($view, 'default');
         $this->view->setDefaultView($this->default_module_view_path);
 
@@ -1524,21 +1556,31 @@ class Openprovider extends Module
         ]);
         $this->logRequest($api);
 
-        if ($domain_response->getCode() != 0 || is_null($domain_response->getData()['results'])) {
-            $this->Input->setErrors([
-                'errors' => [
-                    Language::_('OpenProvider.!error.domain.not_exist', true)
-                ]
-            ]);
+        $domain_request_failed = $domain_response->getCode() != 0;
+
+        if ($domain_request_failed) {
+            $this->assignError($domain_response->getMessage());
+
+            return false;
+        }
+
+        if ($this->checkIfDomainDoesNotExistInSearchDomainResponse($domain_response)) {
+            $this->assignError($this->isPageOnClientSide($view) ?
+                Language::_('OpenProvider.!error.domain.contact_support', true) :
+                Language::_('OpenProvider.!error.domain.not_exist', true));
 
             return false;
         }
 
         $op_domain = $domain_response->getData()['results'][0];
 
-        if ($post) {
-            $vars = (object) $post;
+        if (isset($op_domain['auth_code']) && $op_domain['auth_code']) {
+            $vars->epp = $op_domain['auth_code'];
+        }
 
+        $vars->is_locked = isset($op_domain['is_locked']) && $op_domain['is_locked'] ? 'true' : 'false';
+
+        if ($post) {
             if (isset($post['generate-new-epp']) && $post['generate-new-epp'] == 'true') {
                 $reset_auth_code_response = $api->call('resetAuthCodeDomainRequest', [
                     'id' => $op_domain['id'],
@@ -1546,13 +1588,9 @@ class Openprovider extends Module
                 $this->logRequest($api);
 
                 if ($reset_auth_code_response->getCode() != 0) {
-                    $this->Input->setErrors([
-                        'errors' => [
-                            $reset_auth_code_response->getMessage() . ': ' . $reset_auth_code_response->getCode(),
-                        ]
-                    ]);
+                    $this->assignError($reset_auth_code_response->getMessage());
                 } else {
-                    $op_domain['auth_code'] = $reset_auth_code_response->getData()['auth_code'];
+                    $vars->epp = $reset_auth_code_response->getData()['auth_code'];
                 }
             }
 
@@ -1566,24 +1604,46 @@ class Openprovider extends Module
                 $this->logRequest($api);
 
                 if ($update_is_locked_domain_response->getCode() != 0) {
-                    $this->Input->setErrors([
-                        'errors' => [
-                            $update_is_locked_domain_response->getMessage() . ': ' . $update_is_locked_domain_response->getCode()
-                        ]
-                    ]);
+                    $this->assignError($update_is_locked_domain_response->getMessage());
                 } else {
-                    $op_domain['is_locked'] = $domain_transfer_lock;
+                    $vars->is_locked = isset($domain_transfer_lock) && $domain_transfer_lock ? 'true' : 'false';
                 }
             }
         }
 
-        if (isset($op_domain['auth_code']) && $op_domain['auth_code']) {
-            $vars->epp = $op_domain['auth_code'];
+       return $this->render($vars);
+    }
+
+    /**
+     * Assign error message to view.
+     * $this->Input should be initialized for this method to be executed correctly.
+     *
+     * @param string $message
+     */
+    private function assignError(string $message): void
+    {
+        $this->Input->setErrors([
+            'errors' => [
+                $message,
+            ]
+        ]);
+    }
+
+    /**
+     * Render template and return results as a string.
+     * $this->view should be initialized and template should be configured before you can execute this method.
+     *
+     * @param object|null $vars
+     *
+     * @return string HTML string from template
+     *
+     * @throws Exception
+     */
+    private function render($vars = null): string
+    {
+        if (!is_null($vars)) {
+            $this->view->set('vars', $vars);
         }
-
-        $vars->is_locked = isset($op_domain['is_locked']) && $op_domain['is_locked'] ? 'true' : 'false';
-
-        $this->view->set('vars', $vars);
 
         return $this->view->fetch();
     }
@@ -2087,6 +2147,27 @@ class Openprovider extends Module
         }
 
         return $this->Contacts->intlNumber($number, $country, '.');
+    }
+
+    /**
+     * @param Response $search_domain_response
+     *
+     * @return bool
+     */
+    private function checkIfDomainDoesNotExistInSearchDomainResponse(Response $search_domain_response): bool
+    {
+        return !isset($search_domain_response->getData()['results']) || // there is no results array in response data
+            empty($search_domain_response->getData()['results']); // or results array is empty
+    }
+
+    /**
+     * @param $service
+     * 
+     * @return bool
+     */
+    private function checkIfServiceStatusIssetAndActive($service): bool
+    {
+        return isset($service->status) && $service->status == 'active';
     }
 
     /**
