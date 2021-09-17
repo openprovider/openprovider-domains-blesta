@@ -433,18 +433,6 @@ class Openprovider extends Module
     }
 
     /**
-     * @param int|null $module_row_id
-     *
-     * @return string[] a list of the TLDs supported by the registrar module.
-     *
-     * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-getTlds($module_row_id=null)
-     */
-    public function getTlds($module_row_id = null): array
-    {
-        return Configure::get('OpenProvider.tlds');
-    }
-
-    /**
      * @param stdClass $package
      * @param array|null $vars
      *
