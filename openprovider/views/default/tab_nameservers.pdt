@@ -13,6 +13,10 @@
             }
         ?>
     </ul>
+
+    <?php if ($vars->show_link_to_dns_panel) { ?>
+        <a href="<?php $this->Html->ifSet( $vars->link_to_dns_panel ) ?>" target="_blank">Edit DNS records</a>
+    <?php } ?>
 </div>
 <button class="btn btn-light float-right" type="submit">
 <i class="fas fa-edit"></i> <?php $this->_('OpenProvider.tab_nameservers.field_submit'); ?>

@@ -73,4 +73,13 @@ Configure::set('OpenProvider.domain_fields.nom.es', Configure::get('OpenProvider
 Configure::set('OpenProvider.domain_fields.edu.es', Configure::get('OpenProvider.domain_fields.es'));
 Configure::set('OpenProvider.domain_fields.org.es', Configure::get('OpenProvider.domain_fields.es'));
 
+Configure::set('OpenProvider.nameservers', [
+    'openprovider' => [
+        'ns1.openprovider.nl', 'ns2.openprovider.eu', 'ns3.openprovider.be'
+    ],
+    'sectigoweb' => [
+        'ns1.sectigoweb.com', 'ns2.sectigoweb.com', 'ns3.sectigoweb.com', 'ns4.sectigoweb.com'
+    ]
+]);
+
 require_once __DIR__ . '/countries.php';

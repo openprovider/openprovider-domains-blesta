@@ -1339,16 +1339,31 @@ class Openprovider extends Module
             $vars = (object) $post;
 
             $response = $this->modifyNameServersInOpenProvider($api, $op_domain['id'], $post['ns']);
-
             if ($response->getCode() != 0) {
                 $this->assignError($response->getMessage());
-
-                return $this->render($vars);
             }
         } else {
             $vars->ns = array_map(function ($name_server) {
                 return $name_server['name'];
             }, $op_domain['name_servers']);
+        }
+
+        $number_of_openprovider_ns = 0;
+        $number_of_sectigo_ns = 0;
+        foreach ($vars->ns as $ns) {
+            if (in_array($ns, Configure::get('OpenProvider.nameservers')['sectigoweb'])) {
+                $number_of_sectigo_ns++;
+            } elseif (in_array($ns, Configure::get('OpenProvider.nameservers')['openprovider'])) {
+                $number_of_openprovider_ns++;
+            }
+        }
+
+        $vars->link_to_dns_panel = '#';
+        $vars->show_link_to_dns_panel = false;
+        if ($number_of_openprovider_ns >= 2 || $number_of_sectigo_ns >= 2) {
+            $vars->show_link_to_dns_panel = true;
+            // TODO: input link to link_to_dns_panel when method will be implemented
+            // $vars->link_to_dns_panel = 'some link'
         }
 
         $this->logRequest($api);
