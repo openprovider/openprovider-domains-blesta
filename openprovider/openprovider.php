@@ -3,7 +3,7 @@
 use Openprovider\Api\Rest\Client\Domain\Model\DomainAdditionalData;
 use Openprovider\Api\Rest\Client\Person\Model\CustomerExtensionAdditionalData;
 
-class Openprovider extends Module
+class Openprovider extends RegistrarModule
 {
     /**
      * @const string
@@ -638,7 +638,9 @@ class Openprovider extends Module
             }
         }
 
-        $name_servers = $this->getNameServersFromVarsOrDefault($vars, $package->meta->ns);
+        $default_nameservers = $package->meta->ns ?? [];
+
+        $name_servers = $this->getNameServersFromVarsOrDefault($vars, $default_nameservers);
 
         $customer = $this->getCustomerData($vars);
 
