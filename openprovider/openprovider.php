@@ -1774,6 +1774,38 @@ class Openprovider extends Module
      * @param stdClass $package
      * @param null $vars
      *
+     * @return ModuleFields contains fields displayed when an admin goes to create a service.
+     *
+     * @see https://docs.blesta.com/display/dev/Module+Methods#ModuleMethods-getAdminAddFields($package,$vars=null)
+     */
+    public function getAdminAddFields($package, $vars = null): ModuleFields
+    {
+        // Handle transfer request
+        $operation = self::REGISTER_OPERATION;
+        if ((isset($vars->transfer) && $vars->transfer) || isset($vars->auth)) {
+            $operation = self::TRANSFER_OPERATION;
+        }
+
+        $module_fields = [];
+        if ($operation == self::REGISTER_OPERATION) {
+            // Handle domain registration
+            $module_fields = array_merge(
+                Configure::get('OpenProvider.domain_fields'),
+                Configure::get('OpenProvider.nameserver_fields')
+            );
+        }
+
+        if ($operation == self::TRANSFER_OPERATION) {
+            $module_fields = Configure::get('OpenProvider.transfer_fields');
+        }
+
+        return $this->arrayToModuleFields($module_fields, null, $vars);
+    }
+
+    /**
+     * @param stdClass $package
+     * @param null $vars
+     *
      * @return ModuleFields contains fields displayed when a client goes to create a service.
      *
      * This method is very similar to getAdminAddFields().
