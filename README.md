@@ -21,22 +21,6 @@ Offer your customers almost any TLD, from the most popular to the most exotic, a
 - Follow the tutorial for the [Blesta Domain Manager](https://docs.blesta.com/display/user/Domain+Manager)
 
 
+### Contact Us!
 
-### Expanding the list of supported TLDs
-
-- We've included the 100 most popular TLDs in the module. But if you find that you need something else, you can add any TLD supported by Openprovider, provided that it does not require additional data fields (check the [Openprovider Knowledge Base](https://support.openprovider.eu/hc/en-us) to determine if your target TLD needs additional data)
-- If you're interested in offering domains which require additional data, please make an issue in this repository and we'll try to add support as soon as possible.
-- Navigate to `<blesta root>/components/modules/openprovider/config/openprovider.php`and configure the array `OpenProvider.tlds` with the TLDs which you would like to support. Check your Openprovider account for a full list of the more than 2800 TLDs available for registration. 
-
-```php
-// Allowed tlds
-Configure::set('OpenProvider.tlds', [
-    '.com',
-    '.nl',
-    '.shop', 
-    //...etc
-    // add any missing TLDs here
-]);
-```
-
-- We want the module to reflect your needs and feedback is welcome. Please contact us: integrations@openprovider.com
+- We want the module to reflect your needs and feedback is welcome. Please contact us: integrations(at)openprovider.com
