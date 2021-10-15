@@ -64,7 +64,8 @@ class OpenProviderApi
         $this->command_mapping = new CommandMapping();
         $this->api_config = new ApiConfig();
         $this->params_creator_factory = new ParamsCreatorFactory();
-        $this->serializer = new Serializer([new ObjectNormalizer(null, new CamelCaseToSnakeCaseNameConverter())]);
+        $this->serializer = new Serializer(
+            [new ObjectNormalizer(null, new CamelCaseToSnakeCaseNameConverter())]);
         $this->http_client = new HttpClient([
             'headers' => [
                 'X-Client' => self::API_CLIENT_NAME
@@ -109,7 +110,10 @@ class OpenProviderApi
             $reply = $service->$apiMethod(...$requestParameters);
         } catch (\Exception $e) {
             $responseData = $this->serializer->normalize(
-                    json_decode(substr($e->getMessage(), strpos($e->getMessage(), 'response:') + strlen('response:')))
+                json_decode(
+                    substr(
+                        $e->getMessage(),
+                        strpos($e->getMessage(), 'response:') + strlen('response:')))
                 ) ?? $e->getMessage();
 
             $return = $this->failedResponse(

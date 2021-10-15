@@ -51,7 +51,8 @@ Configure::set('OpenProvider.domain_fields.es', [
         'type' => 'select',
         'options' => [
             'passport_number' => Language::_('OpenProvider.domain.identification_type.passport_number', true),
-            'company_registration_number' => Language::_('OpenProvider.domain.identification_type.company_registration_number', true),
+            'company_registration_number' => Language::_(
+                'OpenProvider.domain.identification_type.company_registration_number', true),
         ]
     ],
     'passport_number' => [

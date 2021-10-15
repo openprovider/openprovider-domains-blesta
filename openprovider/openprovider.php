@@ -803,7 +803,8 @@ class Openprovider extends RegistrarModule
         $is_token_until_date_valid = false;
 
         if (isset($token_until_date->{$var_name_token_until_date}) && $token_until_date->{$var_name_token_until_date}) {
-            $is_token_until_date_valid = ((new DateTime($token_until_date->{$var_name_token_until_date}))->getTimestamp()
+            $is_token_until_date_valid = (
+                (new DateTime($token_until_date->{$var_name_token_until_date}))->getTimestamp()
                 - (new DateTime())->getTimestamp()) > self::MINIMUM_TOKEN_LIFE_TIME_IN_SECONDS;
         }
 
@@ -824,7 +825,10 @@ class Openprovider extends RegistrarModule
             return $api;
         }
 
-        $token_until_date = date('Y-m-d H:i:s', strtotime(date('Y-m-d H:i:s') . ' +' . self::TOKEN_LIFE_TIME_IN_MINUTES . ' minutes'));
+        $token_until_date = date(
+            'Y-m-d H:i:s',
+            strtotime(date('Y-m-d H:i:s') . ' +' . self::TOKEN_LIFE_TIME_IN_MINUTES . ' minutes')
+        );
 
         $this->ModuleManager->setMeta($module_id, [
             [
@@ -1293,7 +1297,8 @@ class Openprovider extends RegistrarModule
     )
     {
         if (!$this->checkIfServiceStatusIssetAndActive($service)) {
-            $this->assignError(Language::_('OpenProvider.!error.service.domain.status_not_active_in_blesta', true));
+            $this->assignError(
+                Language::_('OpenProvider.!error.service.domain.status_not_active_in_blesta', true));
 
             return false;
         }
@@ -1378,7 +1383,8 @@ class Openprovider extends RegistrarModule
     )
     {
         if (!$this->checkIfServiceStatusIssetAndActive($service)) {
-            $this->assignError(Language::_('OpenProvider.!error.service.domain.status_not_active_in_blesta', true));
+            $this->assignError(
+                Language::_('OpenProvider.!error.service.domain.status_not_active_in_blesta', true));
 
             return false;
         }
@@ -1484,12 +1490,14 @@ class Openprovider extends RegistrarModule
                 }, ARRAY_FILTER_USE_KEY);
 
                 foreach ($domain_contacts_from_post[$key] as $key_contact => $value_contact) {
-                    $domain_contacts_from_post[$key][substr($key_contact, strpos($key_contact, $key) + strlen($key) + 1)] = $value_contact;
+                    $domain_contacts_from_post[$key][substr($key_contact,
+                        strpos($key_contact, $key) + strlen($key) + 1)] = $value_contact;
                     unset($domain_contacts_from_post[$key][$key_contact]);
                 }
             }
 
-            $result = $this->createOrReuseDomainContactsInOp($api, $op_domain['id'], $handles, $domain_contacts_from_op, $domain_contacts_from_post);
+            $result = $this->createOrReuseDomainContactsInOp(
+                $api, $op_domain['id'], $handles, $domain_contacts_from_op, $domain_contacts_from_post);
 
             if ($result != 'success') {
                 $this->assignError($result);
@@ -1523,7 +1531,8 @@ class Openprovider extends RegistrarModule
     )
     {
         if (!$this->checkIfServiceStatusIssetAndActive($service)) {
-            $this->assignError(Language::_('OpenProvider.!error.service.domain.status_not_active_in_blesta', true));
+            $this->assignError(
+                Language::_('OpenProvider.!error.service.domain.status_not_active_in_blesta', true));
 
             return false;
         }
@@ -1647,7 +1656,11 @@ class Openprovider extends RegistrarModule
      *
      * @return Response
      */
-    private function modifyNameServersInOpenProvider(OpenProviderApi $api, int $op_domain_id, array $name_servers): Response
+    private function modifyNameServersInOpenProvider(
+        OpenProviderApi $api,
+        int $op_domain_id,
+        array $name_servers
+    ): Response
     {
         $args['id'] = $op_domain_id;
 
@@ -1971,7 +1984,10 @@ class Openprovider extends RegistrarModule
             $this->ModuleManager->setMeta($module_id, [
                 [
                     'key' => $var_name_token_until_date,
-                    'value' => date('Y-m-d H:i:s', strtotime(date('Y-m-d H:i:s') . ' +' . self::TOKEN_LIFE_TIME_IN_MINUTES . ' minutes'))
+                    'value' => date(
+                        'Y-m-d H:i:s',
+                        strtotime(
+                            date('Y-m-d H:i:s') . ' +' . self::TOKEN_LIFE_TIME_IN_MINUTES . ' minutes'))
                 ],
                 [
                     'key' => $var_name_token,
@@ -2078,7 +2094,8 @@ class Openprovider extends RegistrarModule
             'name' => [
                 'first_name' => $customer_array['first_name'] ?? null,
                 'last_name'  => $customer_array['last_name'] ?? null,
-                'initials'   => mb_substr($customer_array['first_name'], 0, 1) . '.' . mb_substr($customer_array['last_name'], 0, 1) ?? null,
+                'initials'   => mb_substr(
+                    $customer_array['first_name'], 0, 1) . '.' . mb_substr($customer_array['last_name'], 0, 1) ?? null,
             ],
 
             'address' => [
@@ -2098,7 +2115,11 @@ class Openprovider extends RegistrarModule
      * @param array $fields_to_compare
      * @return bool true if customers equals
      */
-    private function compareTwoCustomerArrays(array $customer_one, array $customer_two, array $fields_to_compare = []): bool
+    private function compareTwoCustomerArrays(
+        array $customer_one,
+        array $customer_two,
+        array $fields_to_compare = []
+    ): bool
     {
         foreach ($fields_to_compare as $field) {
             if ($customer_one[$field] != $customer_two[$field]) {
