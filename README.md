@@ -20,6 +20,9 @@ Offer your customers almost any TLD, from the most popular to the most exotic, a
 - Activate the Openprovider registrar module in Blesta, and add your Openprovider credentials 
 - Follow the tutorial for the [Blesta Domain Manager](https://docs.blesta.com/display/user/Domain+Manager)
 
+### Adding additional TLDs
+By default the Openprovider module supports the most popular 100 TLDs. If you'd like to add more, simply add the desired TLDs to the list of allowed TLDs in the file `/openprovider/config/openprovider.php` 
+
 
 ### Contact Us!
 
