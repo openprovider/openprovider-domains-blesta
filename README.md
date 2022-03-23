@@ -1,4 +1,4 @@
-# Openprovider Domains module for Blesta
+# Openprovider Domains module for Blesta 5.2
 
 Offer your customers almost any TLD, from the most popular to the most exotic, at unbeatable prices all from one registrar - [Openprovider](https://www.openprovider.com)
 
@@ -24,6 +24,6 @@ Offer your customers almost any TLD, from the most popular to the most exotic, a
 By default the Openprovider module supports the most popular 100 TLDs. If you'd like to add more, simply add the desired TLDs to the list of allowed TLDs in the file `/openprovider/config/openprovider.php` 
 
 
-### Contact Us!
+### Development Pause
+Development on the module is paused. If you have interest in the module, please create an issue with the requested features, which will be considered at the earliest possible time.
 
-- We want the module to reflect your needs and feedback is welcome. Please contact us: integrations(at)openprovider.com
