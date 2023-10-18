@@ -1,3 +1,6 @@
+## Not Actively Maintained
+Currently, the module is not actively maintained by Openprovider. Pull requests will be reviewed, and potentially merged, but users are encouraged to fork and develop the current module to meet their needs.
+
 # Openprovider Domains module for Blesta 5.2
 
 Offer your customers almost any TLD, from the most popular to the most exotic, at unbeatable prices all from one registrar - [Openprovider](https://www.openprovider.com)
