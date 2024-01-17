@@ -1,5 +1,18 @@
+# The OpenProvider registrar module has been added to Blesta 5.9
+[Please see the release notes](https://www.blesta.com/2024/01/16/blesta-5.9-released/)
+
+To install the Openprovider registrar module provided with Blesta:
+
+1. Visit [**TLDs**] > [**Registrars**].
+
+![image](https://github.com/openprovider/openprovider-domains-blesta/assets/97894083/d2fe1592-9623-4308-8a5a-3e9ca4ee38ba)
+
+2. Find the Openprovider module and click the "**Install**" button.
+
+![image](https://github.com/openprovider/openprovider-domains-blesta/assets/97894083/dd5a648d-954f-4643-8d93-1a19858d978a)
+
 ## Not Actively Maintained
-Currently, the module is not actively maintained by Openprovider. Pull requests will be reviewed, and potentially merged, but users are encouraged to fork and develop the current module to meet their needs.
+Currently, this module is not actively maintained by Openprovider. Please use the Openprovider registrar module provided with Blesta, see instructions above.
 
 # Openprovider Domains module for Blesta 5.2
 
